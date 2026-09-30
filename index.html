@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Escala de Entrega · CD Nova Santa Rita</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style>
 :root{color-scheme:light;--g1:#D8D8D8;--g2:#BFBFBF;--dk:#262626;--amb:#FFC000;--xl:#217346;--navy:#0E1B3D;--navy2:#16265A;--amber:#E48B00}
 *,*::before,*::after{box-sizing:border-box}
@@ -17,6 +19,16 @@ html,body{margin:0;background:#E9EAEE;color:#000;font:14px Arial,Helvetica,sans-
 .bar button:hover{background:#1E3273}
 .bar button.pri{background:var(--amber);border-color:var(--amber);color:#1B1200}
 .bar .saved{font-size:12px;color:#AEB9DA;min-width:70px}
+.bar .saved.ok{color:#8FD6A8}.bar .saved.off{color:#FFC76B}.bar .saved.err{color:#FF8A8A;font-weight:700}
+/* nuvem: célula alterada por outra pessoa pisca em amarelo */
+@keyframes rmod{0%{background:#FFD76A}100%{background:transparent}}
+#tbl input.rmod{animation:rmod 1.8s ease-out}
+.nuvemOv{position:fixed;left:0;right:0;bottom:0;top:var(--barH,56px);z-index:6;background:rgba(233,234,238,.88);display:flex;align-items:center;justify-content:center}
+.nuvemOv[hidden]{display:none}
+.nuvemOv .cx{background:#fff;border:1px solid #D0D4DE;border-top:4px solid var(--amber);border-radius:10px;padding:22px 26px;max-width:440px;text-align:center;box-shadow:0 10px 30px rgba(14,27,61,.15)}
+.nuvemOv b{display:block;font:700 16px Arial,sans-serif;color:var(--navy);margin-bottom:6px}
+.nuvemOv p{margin:0 0 14px;color:#5A6072;font-size:13px;line-height:1.45}
+.nuvemOv button{font:600 12.5px Arial,sans-serif;border-radius:6px;padding:8px 14px;border:1px solid #C5CBDA;background:#F7F8FB;cursor:pointer}
 .bar button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 input[type=file]{display:none}
 .sum{position:sticky;top:var(--barH,56px);z-index:4;display:flex;gap:8px;flex-wrap:wrap;align-items:stretch;background:#fff;padding:10px 0 12px;margin:-4px 0 12px;border-bottom:1px solid #E1E4EC}
@@ -208,6 +220,7 @@ dialog.dd::backdrop{background:rgba(14,27,61,.55)}
   <input type="file" id="fImp" accept=".xlsx">
 </div>
 
+<div class="nuvemOv" id="nuvemOv" hidden><div class="cx"><b id="nuvemOvT">Conectando à nuvem…</b><p id="nuvemOvP">Carregando a escala compartilhada. Todo mundo vê as mesmas abas e as alterações em tempo real.</p><button type="button" id="nuvemOff" hidden>Continuar só neste navegador</button></div></div>
 <div class="sheet">
   <div class="tabs" id="tabs" role="tablist" aria-label="Escalas por data"></div>
   <div class="page">
@@ -440,7 +453,7 @@ function statusBases(){
     z.classList.remove('err'); st.textContent='Lendo '+file.name+'…';
     try{
       const b=lerLinhaSep(decodeTxt(await file.arrayBuffer()), file.name);
-      localStorage.setItem(BASE_LS_KEY,JSON.stringify(b)); BASE_LS=b; statusBases();
+      localStorage.setItem(BASE_LS_KEY,JSON.stringify(b)); BASE_LS=b; statusBases(); if(window.NUVEM) NUVEM.subirBase(b);
       toast(`Base Linha de separação salva: ${b.n.toLocaleString('pt-BR')} produtos.`);
       document.dispatchEvent(new Event('bases'));
     }catch(err){ console.error(err); z.classList.add('err'); st.textContent='Erro: '+err.message; }
@@ -450,22 +463,30 @@ function statusBases(){
   z.addEventListener('dragover',e=>{ e.preventDefault(); z.classList.add('over'); });
   z.addEventListener('dragleave',()=>z.classList.remove('over'));
   z.addEventListener('drop',e=>{ e.preventDefault(); z.classList.remove('over'); usar(e.dataTransfer.files[0]); });
-  $('#bLsDel').addEventListener('click',e=>{ e.preventDefault(); if(!confirm('Remover a base Linha de separação deste navegador?')) return;
-    localStorage.removeItem(BASE_LS_KEY); BASE_LS=null; statusBases(); document.dispatchEvent(new Event('bases')); });
+  $('#bLsDel').addEventListener('click',e=>{ e.preventDefault(); if(!confirm('Remover a base Linha de separação? (remove para todos)')) return;
+    localStorage.removeItem(BASE_LS_KEY); BASE_LS=null; statusBases(); if(window.NUVEM) NUVEM.removerBase(); document.dispatchEvent(new Event('bases')); });
   $('#bBase').addEventListener('click',()=>{ statusBases(); $('#dBase').showModal(); });
   $('#bsClose').onclick=$('#bsOk').onclick=()=>$('#dBase').close();
   statusBases();
 })();
 function save(){
+  if(undoSnap && undoAfter===null) undoAfter=serBook(book);   // estado logo depois da ação que pode ser desfeita
   clearTimeout(saveT);
-  saveT=setTimeout(()=>{ try{ localStorage.setItem(LS_KEY,JSON.stringify(book)); $('#saved').textContent='Salvo'; }catch(e){ $('#saved').textContent='Não salvo'; } },350);
-  $('#saved').textContent='Salvando…';
+  saveT=setTimeout(()=>{ try{ localStorage.setItem(LS_KEY,JSON.stringify(book)); if(!window.NUVEM) $('#saved').textContent='Salvo'; }catch(e){ if(!window.NUVEM) $('#saved').textContent='Não salvo'; } },350);
+  if(window.NUVEM) NUVEM.agendar(); else $('#saved').textContent='Salvando…';
 }
+/* cada seção e cada linha ganha um id fixo: é assim que a nuvem sabe qual célula mudou, mesmo com linhas inseridas/excluídas */
+const novoId = p => p + Date.now().toString(36).slice(-5) + Math.random().toString(36).slice(2,8);
+function ensureIds(b){ Object.values(b.escalas).forEach(e=>e.sections.forEach(s=>{ if(!s.id) s.id=novoId('s'); s.rows.forEach(r=>{ if(!r.id) r.id=novoId('r'); }); })); }
+const serEsc = e => ({title:e.title, date:e.date, sections:e.sections.map(s=>({id:s.id, title:s.title, rows:s.rows.map(r=>({id:r.id, v:[...r]}))}))});
+const serBook = b => JSON.stringify({active:b.active, escalas:Object.fromEntries(Object.entries(b.escalas).map(([k,e])=>[k,serEsc(e)]))});
+const desEsc = e => ({title:e.title, date:e.date, sections:e.sections.map(s=>{ const o={title:s.title, rows:s.rows.map(x=>{ const a=x.v.slice(); if(x.id) a.id=x.id; return a; })}; if(s.id) o.id=s.id; return o; })});
 function toast(msg,undo){
   $('#tMsg').textContent=msg; $('#tUndo').style.display=undo?'':'none'; $('#toast').style.display='flex';
   clearTimeout(toastT); toastT=setTimeout(()=>$('#toast').style.display='none',6000);
 }
-function snapshot(){ undoSnap=JSON.stringify(book); }
+let undoAfter=null;
+function snapshot(){ ensureIds(book); undoSnap=serBook(book); undoAfter=null; }
 
 /* ============ PESO: "360.7 kg", "1,930 kg" (vírgula de milhar), "1.930,5 kg" ============ */
 function parsePeso(v){
@@ -627,7 +648,31 @@ $('#date').addEventListener('change',e=>{   // trocar a data renomeia a aba
   if(book.escalas[nd]){ if(confirm(`Já existe uma aba para ${fmtD(nd)}. Abrir essa aba?`)){ useTab(nd); save(); } render(); return; }
   book.escalas[nd]=state; delete book.escalas[od]; useTab(nd); save(); render();
 });
-$('#tUndo').addEventListener('click',()=>{ if(!undoSnap) return; book=JSON.parse(undoSnap); undoSnap=null; useTab(book.escalas[book.active]?book.active:Object.keys(book.escalas).sort().pop()); save(); render(); $('#toast').style.display='none'; });
+/* desfazer: volta só as abas que a ação mudou (o que outras pessoas alteraram nas outras abas fica) */
+$('#tUndo').addEventListener('click',()=>{ if(!undoSnap) return;
+  const A=JSON.parse(undoSnap), D=JSON.parse(undoAfter||serBook(book)), J=JSON.stringify;
+  new Set([...Object.keys(A.escalas),...Object.keys(D.escalas)]).forEach(k=>{
+    if(J(A.escalas[k])===J(D.escalas[k])) return;
+    if(!A.escalas[k]){ delete book.escalas[k]; return; }
+    const res=desEsc(A.escalas[k]), cur=book.escalas[k], aft=D.escalas[k];
+    if(cur && aft){   // mantém o que outras pessoas mudaram depois da ação
+      const vAft=new Map(), idsAntes=new Set(), rCur=new Map();
+      aft.sections.forEach(s=>s.rows.forEach(x=>{ if(x.id) vAft.set(x.id,x.v); }));
+      res.sections.forEach(s=>s.rows.forEach(r=>{ if(r.id) idsAntes.add(r.id); }));
+      cur.sections.forEach(s=>s.rows.forEach(r=>{ if(r.id) rCur.set(r.id,r); }));
+      res.sections.forEach(s=>s.rows.forEach(r=>{ const c=rCur.get(r.id), v=vAft.get(r.id); if(!c||!v) return;
+        for(let i=0;i<NC;i++) if(String(c[i]??'')!==String(v[i]??'')) r[i]=c[i]; }));
+      cur.sections.forEach(s=>{ const o=res.sections.find(x=>x.id&&x.id===s.id); if(!o) return;
+        s.rows.forEach((r,k2)=>{ if(!r.id || vAft.has(r.id) || idsAntes.has(r.id)) return;
+          let pos=0; for(let j=k2-1;j>=0;j--){ const q=o.rows.findIndex(x=>x.id===s.rows[j].id); if(q>=0){ pos=q+1; break; } }
+          const n=[...r]; n.id=r.id; o.rows.splice(pos,0,n); }); });
+    }
+    book.escalas[k]=res;
+  });
+  if(!Object.keys(book.escalas).length){ const t=today(); book.escalas[t]=novaEscala(t); }
+  undoSnap=null; undoAfter=null;
+  useTab(book.escalas[A.active]?A.active:(book.escalas[book.active]?book.active:Object.keys(book.escalas).sort().pop()));
+  save(); render(); $('#toast').style.display='none'; });
 $('#bSec').addEventListener('click',()=>{ const t=prompt('Nome da seção',SEC_CD2); if(!t) return; state.sections.push({title:t.toUpperCase(),rows:[blank()]}); save(); render([state.sections.length-1,0,0]); });
 $('#bNew').addEventListener('click',()=>{ if(!confirm(`Limpar a aba ${fmtD(book.active)}? As outras abas não mudam.`)) return; snapshot(); book.escalas[book.active]=novaEscala(book.active,state.title); useTab(book.active); save(); render([0,0,0]); toast('Aba limpa.',true); });
 /* ============ IMPRIMIR: escolhe os CDs, uma folha por CD ============ */
@@ -669,6 +714,7 @@ $('#pGo').addEventListener('click',()=>{
   const idx=[...document.querySelectorAll('#pList input[value]:checked')].map(c=>+c.value);
   if(!idx.length) return;
   try{ localStorage.setItem(PSEL_KEY,JSON.stringify(idx.map(i=>state.sections[i].title))); }catch(e){}
+  if(window.NUVEM) NUVEM.pref('psel',idx.map(i=>state.sections[i].title));
   montarImpressao(idx); $('#dPrint').close();
   document.body.classList.add('printing');
   setTimeout(()=>window.print(),50);
@@ -954,7 +1000,7 @@ book=load(); useTab(book.active); render();
     const m3=ehBox(obs)?c.m3b:c.m3;   // Palete Box: um palete fechado por SKU, bem menos cheio que o picking
     return Math.max(1, Math.ceil(cub/m3-1e-9), Math.ceil(peso/c.kg-1e-9));
   }
-  function salvarCfg(){ try{ localStorage.setItem(PCFG,JSON.stringify(cfg())); }catch(e){} }
+  function salvarCfg(){ try{ localStorage.setItem(PCFG,JSON.stringify(cfg())); }catch(e){} if(window.NUVEM) NUVEM.pref('pcfg',cfg()); }
   ['#pOn','#pM3','#pM3B','#pKg'].forEach(id=>$(id).addEventListener('input',()=>{ salvarCfg(); atualizarPrev(); }));
   /* calibração: cargas que já têm QTD PALLET real digitada nas abas × cubagem do Metabase */
   function calibrar(){
@@ -1336,6 +1382,310 @@ book=load(); useTab(book.active); render();
       toast('Imagem copiada. É só colar no WhatsApp.');
     }catch(e){ await baixar(); toast('Este navegador não copia imagem: baixei o PNG.'); }
   });
+})();
+</script>
+<script>
+/* =====================================================================
+   NUVEM · Firebase Firestore em tempo real
+   Tudo que é alterado (células, linhas, seções, abas, título, data,
+   base de linha de separação, config. de paletes e seleção de impressão)
+   é gravado na nuvem e aparece na hora para todo mundo.
+   ---------------------------------------------------------------------
+   Cole aqui o firebaseConfig do projeto (Console do Firebase →
+   Configurações do projeto → Seus apps → app da Web → Configuração).
+   Enquanto ficar null, a escala funciona só neste navegador, como antes.
+   ===================================================================== */
+const FIREBASE_CONFIG = {
+  apiKey: "COLE_AQUI_A_API_KEY",                 // ← única linha para trocar (Configurações do projeto → Seus apps → Config)
+  authDomain: "escala-cd-107.firebaseapp.com",
+  projectId: "escala-cd-107",
+  storageBucket: "escala-cd-107.firebasestorage.app",
+  messagingSenderId: "754221719189",
+  appId: "1:754221719189:web:1cc5b64a5e779c234fc59c"
+};
+/* exemplo:
+const FIREBASE_CONFIG = {
+  apiKey: "AIza...",
+  authDomain: "seu-projeto.firebaseapp.com",
+  projectId: "seu-projeto",
+  storageBucket: "seu-projeto.appspot.com",
+  messagingSenderId: "000000000000",
+  appId: "1:000000000000:web:abc123"
+};
+*/
+const COL_ABAS = 'escala_abas';      // um documento por aba (id = AAAA-MM-DD)
+const COL_CFG  = 'escala_config';    // base linha de separação (em partes) + preferências
+
+(function(){
+  const st=$('#saved'), ov=$('#nuvemOv');
+  const setSt=(t,cls,tip)=>{ st.textContent=t; st.className='saved'+(cls?' '+cls:''); st.title=tip||''; };
+  if(!FIREBASE_CONFIG || /COLE_AQUI/.test(FIREBASE_CONFIG.apiKey||'') || typeof firebase==='undefined'){
+    ov.hidden=true; window.NUVEM=null;
+    setSt('Modo local','off', typeof firebase==='undefined' ? 'Não consegui carregar o Firebase (sem internet?). Os dados ficam só neste navegador.' : 'Firebase não configurado: os dados ficam só neste navegador.');
+    return;
+  }
+  ov.hidden=false; setSt('Conectando…','off');
+  firebase.initializeApp(FIREBASE_CONFIG);
+  const db=firebase.firestore();
+  db.enablePersistence({synchronizeTabs:true}).catch(()=>{});   // fila offline: sem internet continua salvando e envia depois
+  const FV=firebase.firestore.FieldValue, abas=db.collection(COL_ABAS), cfgCol=db.collection(COL_CFG);
+
+  let ready=false, desligada=false, flushT=null, pend=0, erro='';
+  const srv={};                       // o que esta tela sabe que está na nuvem, por aba
+  const inflight={}, held={};         // aba com transação de layout em andamento → snapshots esperam
+  let digitando={el:null,t:0};
+  $('#tbl').addEventListener('input',e=>{ digitando={el:e.target,t:Date.now()}; },true);
+  $('#title').addEventListener('input',e=>{ digitando={el:e.target,t:Date.now()}; },true);
+
+  function status(){
+    if(desligada) return setSt('Modo local','off','Trabalhando só neste navegador');
+    if(erro==='permission-denied') return setSt('⚠ Sem permissão na nuvem','err','As regras do Firestore estão bloqueando. Veja as instruções de configuração.');
+    if(!ready) return setSt('Conectando…','off');
+    if(!navigator.onLine) return setSt('Offline · salvo aqui','off','Sem internet: as alterações ficam na fila e sobem sozinhas quando a conexão voltar');
+    if(pend>0) return setSt('Enviando…','');
+    setSt('☁ Sincronizado','ok','Tudo salvo na nuvem · alterações de outras pessoas aparecem em tempo real');
+  }
+  addEventListener('online',status); addEventListener('offline',status);
+  function enviar(p){
+    pend++; status();
+    Promise.resolve(p).then(()=>{ if(erro!=='permission-denied') erro=''; })
+      .catch(err=>{ console.error('[nuvem]',err); erro=(err&&err.code)||'erro'; })
+      .finally(()=>{ pend--; status(); });
+  }
+
+  /* ---------- formato na nuvem ----------
+     escala_abas/{data} = { date, title, layout:[{id,title,rows:[idLinha…]}], cells:{idLinha:{c0…c9}}, em }
+     editar uma célula grava só  cells.<idLinha>.c<col>  → duas pessoas digitando em células diferentes nunca se atropelam */
+  const toMap = a => Object.fromEntries(a.map((v,c)=>['c'+c,v]));
+  function repr(e){
+    const cells={};
+    const layout=e.sections.map(s=>({id:s.id, title:String(s.title??''), rows:s.rows.map(r=>{ cells[r.id]=COLS.map((_,c)=>String(r[c]??'')); return r.id; })}));
+    return {title:String(e.title??''), layout, cells};
+  }
+  function doDoc(data){
+    const layout=(data.layout||[]).map(s=>({id:String(s.id), title:String(s.title??''), rows:(s.rows||[]).map(String)}));
+    const cells={}, cm=data.cells||{};
+    for(const id in cm){ const m=cm[id]||{}; cells[id]=COLS.map((_,c)=>String(m['c'+c]??'')); }
+    return {title:String(data.title??TITULO), layout, cells};
+  }
+  function escalaDe(d,R){
+    const vis=new Set();
+    return {title:R.title, date:d, sections:R.layout.map(s=>{
+      const sec={id:s.id, title:s.title, rows:[]};
+      s.rows.forEach(id=>{ if(vis.has(id)) return; vis.add(id);
+        const a=(R.cells[id]||COLS.map(()=>'')).slice(); a.id=id; sec.rows.push(a); });
+      return sec; })};
+  }
+  function eqRepr(a,b){
+    if(a.title!==b.title || JSON.stringify(a.layout)!==JSON.stringify(b.layout)) return false;
+    const ka=Object.keys(a.cells), kb=Object.keys(b.cells); if(ka.length!==kb.length) return false;
+    return ka.every(id=>{ const x=a.cells[id], y=b.cells[id]; return y && x.every((v,c)=>v===y[c]); });
+  }
+  const docOf = (d,R) => ({date:d, title:R.title, layout:R.layout, cells:Object.fromEntries(Object.entries(R.cells).map(([id,a])=>[id,toMap(a)])), em:FV.serverTimestamp()});
+
+  /* ---------- envio: compara a tela com o que está na nuvem e manda só a diferença ---------- */
+  function agendar(){ if(!ready||desligada) return; clearTimeout(flushT); flushT=setTimeout(flushNow,250); setSt('Salvando…',''); }
+  function flushNow(){
+    clearTimeout(flushT); if(!ready||desligada) return;
+    ensureIds(book);
+    new Set([...Object.keys(book.escalas),...Object.keys(srv)]).forEach(d=>{
+      const e=book.escalas[d], s=srv[d], ref=abas.doc(d);
+      if(!e){ if(s){ delete srv[d]; enviar(ref.delete()); } return; }
+      const L=repr(e);
+      if(!s){ srv[d]=L; enviar(ref.set(docOf(d,L))); return; }
+      const up={}; let n=0;
+      if(L.title!==s.title){ up.title=L.title; n++; }
+      for(const id in L.cells){
+        const a=L.cells[id], b=s.cells[id];
+        if(!b){ up['cells.'+id]=toMap(a); n++; }
+        else a.forEach((v,c)=>{ if(v!==b[c]){ up[`cells.${id}.c${c}`]=v; n++; } });
+      }
+      for(const id in s.cells) if(!L.cells[id]){ up['cells.'+id]=FV.delete(); n++; }
+      const lay=JSON.stringify(L.layout)!==JSON.stringify(s.layout);
+      if(!n && !lay) return;
+      up.em=FV.serverTimestamp();
+      const base=s.layout; srv[d]=L;
+      if(!lay) enviar(ref.update(up));
+      else trocarLayout(d,ref,base,L.layout,up);
+    });
+    status();
+  }
+  /* linhas/seções inseridas ou excluídas: transação que junta com o que outra pessoa fez ao mesmo tempo */
+  function trocarLayout(d,ref,base,mine,up){
+    inflight[d]=(inflight[d]||0)+1;
+    enviar(db.runTransaction(async tx=>{
+      const snap=await tx.get(ref);
+      if(!snap.exists) return;                          // aba excluída por outra pessoa
+      tx.update(ref, Object.assign({},up,{layout:juntarLayout(base,mine,snap.data().layout||[])}));
+    }).catch(err=>{
+      if(err&&err.code==='permission-denied') throw err;
+      enviar(ref.update(Object.assign({},up,{layout:mine})));   // offline: grava direto, entra na fila
+    }).finally(()=>{
+      inflight[d]--;
+      if(!inflight[d] && d in held){ const h=held[d]; delete held[d]; aplicarRemoto([[d,h]]); }
+    }));
+  }
+  function juntarLayout(base,mine,theirs){
+    const J=JSON.stringify;
+    if(J(theirs)===J(base)) return mine;
+    if(J(mine)===J(base)) return theirs;
+    const out=theirs.map(s=>({id:s.id,title:s.title,rows:s.rows.slice()}));
+    const bSec=new Map(base.map(s=>[s.id,s])), mSec=new Map(mine.map(s=>[s.id,s]));
+    const onde=lay=>{ const m=new Map(); lay.forEach(s=>s.rows.forEach(r=>m.set(r,s.id))); return m; };
+    const bRow=onde(base), mRow=onde(mine);
+    for(let i=out.length-1;i>=0;i--) if(bSec.has(out[i].id)&&!mSec.has(out[i].id)) out.splice(i,1);   // seções que eu excluí
+    mine.forEach((s,i)=>{                                                                              // seções novas / renomeadas
+      const o=out.find(x=>x.id===s.id);
+      if(!o){ if(!bSec.has(s.id)) out.splice(Math.min(i,out.length),0,{id:s.id,title:s.title,rows:[]}); return; }
+      const b=bSec.get(s.id); if(b && b.title!==s.title) o.title=s.title;
+    });
+    const mexi=id=>bRow.has(id)&&(!mRow.has(id)||mRow.get(id)!==bRow.get(id));                        // excluí ou mudei de seção
+    out.forEach(s=>{ s.rows=s.rows.filter(id=>!mexi(id)); });
+    mine.forEach(s=>{                                                                                  // linhas novas: entram depois da vizinha de cima
+      const o=out.find(x=>x.id===s.id); if(!o) return;
+      s.rows.forEach((id,k)=>{
+        if((bRow.has(id)&&bRow.get(id)===s.id) || o.rows.includes(id)) return;
+        let pos=0; for(let j=k-1;j>=0;j--){ const p=o.rows.indexOf(s.rows[j]); if(p>=0){ pos=p+1; break; } }
+        o.rows.splice(pos,0,id);
+      });
+    });
+    const vis=new Set(); out.forEach(s=>{ s.rows=s.rows.filter(id=>vis.has(id)?false:(vis.add(id),true)); });
+    return out;
+  }
+
+  /* ---------- recebimento: aplica o que veio da nuvem sem tirar o foco de quem está digitando ---------- */
+  const salvarLocal=()=>{ try{ localStorage.setItem(LS_KEY,JSON.stringify(book)); }catch(e){} };
+  function tabsQuieto(){ const x=scrollX,y=scrollY; renderTabs(); scrollTo(x,y); }
+  function piscar(el){ el.classList.remove('rmod'); void el.offsetWidth; el.classList.add('rmod'); }
+  const podeTrocar = el => el!==document.activeElement || (digitando.el!==el || Date.now()-digitando.t>1500);
+  function setVal(el,v){
+    if(el.value===v || !podeTrocar(el)) return false;
+    const foc=el===document.activeElement, a=el.selectionStart, b=el.selectionEnd;
+    el.value=v; if(foc){ try{ el.setSelectionRange(Math.min(a,v.length),Math.min(b,v.length)); }catch(e){} }
+    return true;
+  }
+  function atualizarTela(old){
+    const sig=e=>e.sections.map(s=>s.id+':'+s.rows.map(r=>r.id).join(',')).join('|');
+    const ae=document.activeElement;
+    if(sig(old)===sig(state)){                                       // mesma estrutura: troca só os valores
+      document.querySelectorAll('#tbl input[data-c]').forEach(el=>{
+        const r=(state.sections[+el.dataset.s]||{rows:[]}).rows[+el.dataset.i]; if(!r) return;
+        const c=+el.dataset.c, v=String(r[c]??'');
+        if(setVal(el,v)){ piscar(el); if(c===C.PAL) el.classList.toggle('est',isEst(v)); }
+        if(c===C.DOCA){ const td=el.closest('td'); if(td) td.classList.toggle('nodoca',semDocaRow(r)); }
+      });
+      document.querySelectorAll('#tbl input[data-sec]').forEach(el=>{ const s=state.sections[+el.dataset.sec]; if(s && setVal(el,s.title)) piscar(el); });
+      setVal($('#title'),state.title);
+      summary(); tabsQuieto(); return;
+    }
+    // linhas/seções mudaram: redesenha e devolve o foco para a mesma célula
+    let foco=null;
+    if(ae && ae.dataset && ae.dataset.c!==undefined){ const r=(old.sections[+ae.dataset.s]||{rows:[]}).rows[+ae.dataset.i]; if(r) foco={row:r.id,c:+ae.dataset.c}; }
+    else if(ae && ae.dataset && ae.dataset.sec!==undefined){ const s=old.sections[+ae.dataset.sec]; if(s) foco={sec:s.id}; }
+    else if(ae===$('#title')) foco={title:1};
+    const sel=foco?[ae.selectionStart,ae.selectionEnd]:null, x=scrollX, y=scrollY;
+    render(); scrollTo(x,y);
+    if(!foco) return;
+    let el=null;
+    if(foco.title) el=$('#title');
+    else if(foco.sec){ const si=state.sections.findIndex(s=>s.id===foco.sec); if(si>=0) el=document.querySelector(`input[data-sec="${si}"]`); }
+    else state.sections.some((s,si)=>{ const ri=s.rows.findIndex(r=>r.id===foco.row); if(ri<0) return false; el=document.querySelector(`input[data-s="${si}"][data-i="${ri}"][data-c="${foco.c}"]`); return true; });
+    if(el){ el.focus({preventScroll:true}); try{ el.setSelectionRange(sel[0],sel[1]); }catch(e){} }
+  }
+  function aplicarRemoto(lista){
+    flushNow();                                        // antes de receber, envia o que ainda estava na espera
+    const old=state, ativa=book.active; let mudouAtiva=false, mudou=false;
+    lista.forEach(([d,data])=>{
+      if(inflight[d]){ held[d]=data; return; }
+      const R=data?doDoc(data):null;
+      if(R ? (srv[d] && eqRepr(R,srv[d])) : !srv[d]) return;
+      mudou=true; if(d===ativa) mudouAtiva=true;
+      if(R){ srv[d]=R; book.escalas[d]=escalaDe(d,R); } else { delete srv[d]; delete book.escalas[d]; }
+    });
+    if(!mudou) return;
+    salvarLocal();
+    if(!book.escalas[ativa]){                           // a aba aberta foi excluída por outra pessoa
+      let ks=Object.keys(book.escalas).sort();
+      if(!ks.length){ const t=today(); book.escalas[t]=novaEscala(t); ks=[t]; }
+      useTab(ks.find(k=>k>ativa)||ks[ks.length-1]); render(); flushNow();
+      toast(`A aba ${fmtD(ativa)} foi excluída por outra pessoa.`); return;
+    }
+    if(mudouAtiva){ useTab(ativa); atualizarTela(old); }
+    else tabsQuieto();
+  }
+
+  /* ---------- carga inicial ---------- */
+  const localAntes=JSON.stringify(book);
+  function pronto(){ ready=true; ov.hidden=true; status(); }
+  const ovT=setTimeout(()=>{ if(ready) return; $('#nuvemOvP').textContent='Está demorando para conectar. Verifique a internet; assim que conectar, a escala abre sozinha.'; $('#nuvemOff').hidden=false; },8000);
+  $('#nuvemOff').addEventListener('click',()=>{ desligada=true; window.NUVEM=null; try{ unsub(); }catch(e){} ov.hidden=true; status(); });
+  const unsub=abas.onSnapshot(snap=>{
+    if(desligada) return;
+    if(!ready){
+      if(snap.empty && snap.metadata.fromCache) return;          // espera a resposta do servidor
+      clearTimeout(ovT);
+      if(snap.empty){                                            // nuvem vazia: sobe o que existe neste navegador
+        pronto(); flushNow(); render();
+        toast('Escala enviada para a nuvem. A partir de agora todos veem as mesmas abas.'); return;
+      }
+      try{ if(!localStorage.getItem('cd107_escala_backup_antes_nuvem')) localStorage.setItem('cd107_escala_backup_antes_nuvem',localAntes); }catch(e){}
+      const esc={};
+      snap.docs.forEach(doc=>{ const R=doDoc(doc.data()); srv[doc.id]=R; esc[doc.id]=escalaDe(doc.id,R); });
+      const pref=book.active; book.escalas=esc;
+      const ks=Object.keys(esc).sort();
+      useTab(esc[pref]?pref:(esc[today()]?today():ks[ks.length-1]));
+      salvarLocal(); pronto(); render(); return;
+    }
+    aplicarRemoto(snap.docChanges().map(ch=>[ch.doc.id, ch.type==='removed'?null:ch.doc.data()]));
+  }, err=>{
+    console.error('[nuvem]',err); erro=err.code||'erro'; status();
+    if(!ready){ clearTimeout(ovT); $('#nuvemOvT').textContent='Não consegui abrir a escala na nuvem';
+      $('#nuvemOvP').textContent = err.code==='permission-denied' ? 'As regras do Firestore estão bloqueando o acesso às coleções escala_abas e escala_config.' : 'Erro: '+(err.message||err.code);
+      $('#nuvemOff').hidden=false; }
+  });
+  addEventListener('beforeunload',flushNow);
+  document.addEventListener('visibilitychange',()=>{ if(document.hidden) flushNow(); });
+
+  /* ---------- base Linha de separação (dividida em partes: ~8.000 produtos por documento) ---------- */
+  const baseMeta=cfgCol.doc('base_linhasep'), PARTE=8000;
+  function subirBase(b){
+    const ver=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+    const ents=Object.entries(b.seq), partes=Math.max(1,Math.ceil(ents.length/PARTE)), batch=db.batch();
+    for(let i=0;i<partes;i++) batch.set(cfgCol.doc('base_linhasep_'+i),{seq:Object.fromEntries(ents.slice(i*PARTE,(i+1)*PARTE))});
+    batch.set(baseMeta,{ver,partes,n:b.n,arquivo:b.arquivo,em:b.em,linhas:b.linhas||{},removida:false});
+    b.ver=ver; try{ localStorage.setItem(BASE_LS_KEY,JSON.stringify(b)); }catch(e){}
+    enviar(batch.commit());
+  }
+  function removerBase(){ enviar(baseMeta.set({removida:true,em:new Date().toISOString()})); }
+  baseMeta.onSnapshot(async doc=>{
+    if(desligada) return;
+    if(!doc.exists){ if(BASE_LS && !doc.metadata.fromCache) subirBase(BASE_LS); return; }   // 1ª vez: sobe a base deste navegador
+    if(doc.metadata.hasPendingWrites) return;
+    const m=doc.data();
+    if(m.removida){ if(BASE_LS){ localStorage.removeItem(BASE_LS_KEY); BASE_LS=null; statusBases(); document.dispatchEvent(new Event('bases')); } return; }
+    if(BASE_LS && BASE_LS.ver===m.ver) return;
+    try{
+      const ps=await Promise.all(Array.from({length:m.partes},(_,i)=>cfgCol.doc('base_linhasep_'+i).get()));
+      const seq={}; ps.forEach(p=>Object.assign(seq,(p.data()||{}).seq||{}));
+      const b={seq,linhas:m.linhas||{},n:m.n,arquivo:m.arquivo,em:m.em,ver:m.ver};
+      localStorage.setItem(BASE_LS_KEY,JSON.stringify(b)); BASE_LS=b; statusBases(); document.dispatchEvent(new Event('bases'));
+    }catch(e){ console.error('[nuvem] base',e); }
+  }, err=>console.error('[nuvem] base',err));
+
+  /* ---------- preferências compartilhadas: estimativa de paletes e CDs marcados na impressão ---------- */
+  const prefDoc=cfgCol.doc('preferencias'), prefT={};
+  function pref(k,v){ clearTimeout(prefT[k]); prefT[k]=setTimeout(()=>enviar(prefDoc.set({[k]:v},{merge:true})),600); }
+  prefDoc.onSnapshot(doc=>{
+    if(desligada || !doc.exists || doc.metadata.hasPendingWrites) return;
+    const d=doc.data();
+    if(d.pcfg){ try{ localStorage.setItem('cd107_escala_pallet_cfg',JSON.stringify(d.pcfg)); }catch(e){}
+      const c=d.pcfg, set=(id,v)=>{ const el=$(id); if(el && el!==document.activeElement && v!=null) el.value=v; };
+      set('#pM3',c.m3); set('#pM3B',c.m3b); set('#pKg',c.kg); if(typeof c.on==='boolean') $('#pOn').checked=c.on; }
+    if(d.psel){ try{ localStorage.setItem(PSEL_KEY,JSON.stringify(d.psel)); }catch(e){} }
+  }, err=>console.error('[nuvem] prefs',err));
+
+  window.NUVEM={agendar, flushNow, subirBase, removerBase, pref};
+  status();
 })();
 </script>
 </body>
