@@ -67,6 +67,10 @@ tr.sec .x{color:#bbb}
 .tab button.tb i{font-style:normal;font-size:11px;background:#5A6480;color:#fff;border-radius:10px;padding:1px 7px;min-width:22px;text-align:center}
 .tab.on{background:#fff;border-color:#fff;box-shadow:inset 0 3px 0 var(--amber)}
 .tab.on button.tb{color:#000}.tab.on button.tb i{background:var(--navy2)}
+/* aba com cargas sem DOCA (ainda não listadas): data em vermelho */
+.tab.semdoca button.tb,.tab.semdoca button.tb span,.tab.on.semdoca button.tb,.tab.on.semdoca button.tb span{color:#D0021B;font-weight:700}
+.tab.semdoca button.tb i,.tab.on.semdoca button.tb i{background:#D0021B}
+.tab.semdoca{box-shadow:inset 0 -3px 0 #D0021B}.tab.on.semdoca{box-shadow:inset 0 3px 0 #D0021B}
 .tab .tx{border:0;background:transparent;color:#8A90A0;font-size:16px;line-height:1;cursor:pointer;padding:6px 8px;border-radius:4px;margin-right:4px;opacity:0}
 .tab:hover .tx,.tab.on .tx,.tab .tx:focus-visible{opacity:1}
 .tab .tx:hover{color:#C0392B;background:#FBE3E0}
@@ -153,12 +157,12 @@ dialog.dd::backdrop{background:rgba(14,27,61,.55)}
     </div>
     <table class="esc" id="tbl">
       <colgroup>
-        <col style="width:5%"><col style="width:5%"><col style="width:9%"><col style="width:9%"><col style="width:6%"><col style="width:5%">
-        <col style="width:9%"><col style="width:7%"><col style="width:13%"><col style="width:8%"><col style="width:10%"><col style="width:11%"><col class="actc" style="width:30px">
+        <col style="width:6%"><col style="width:5%"><col style="width:10%"><col style="width:10%"><col style="width:7%"><col style="width:6%">
+        <col style="width:10%"><col style="width:17%"><col style="width:13%"><col style="width:13%"><col class="actc" style="width:30px">
       </colgroup>
       <thead>
-        <tr class="pcp"><th colspan="12">PCP</th><th class="act"></th></tr>
-        <tr class="cols"><th>LOJA</th><th>PAV</th><th>LOJAS</th><th>TIPO DE CARGA</th><th>QTD PALLET</th><th>DOCA</th><th>PESO</th><th>CUBAGEM</th><th>OBSERVAÇÃO</th><th>MASTER</th><th>CARGAS INFORMADAS</th><th>STATUS</th><th class="act"></th></tr>
+        <tr class="pcp"><th colspan="10">PCP</th><th class="act"></th></tr>
+        <tr class="cols"><th>LOJA</th><th>PAV</th><th>LOJAS</th><th>TIPO DE CARGA</th><th>QTD PALLET</th><th>DOCA</th><th>PESO</th><th>OBSERVAÇÃO</th><th>CARGAS INFORMADAS</th><th>STATUS</th><th class="act"></th></tr>
       </thead>
     </table>
     <div class="sum" id="sum"></div>
@@ -198,7 +202,7 @@ dialog.dd::backdrop{background:rgba(14,27,61,.55)}
       </fieldset>
       <fieldset style="grid-column:1/-1">
         <legend>Cargas com várias lojas</legend>
-        <label><input type="checkbox" id="oUnir" checked> Unir numa linha só as cargas que vão para mais de uma loja (ex.: Picking Sorter) · LOJA = <b>MISTA</b>, peso e cubagem somados</label>
+        <label><input type="checkbox" id="oUnir" checked> Unir numa linha só as cargas que vão para mais de uma loja (ex.: Picking Sorter) · LOJA = <b>MISTA</b>, peso somado</label>
       </fieldset>
       <fieldset style="grid-column:1/-1">
         <legend>Estimativa de QTD PALLET (cubagem e peso)</legend>
@@ -208,7 +212,7 @@ dialog.dd::backdrop{background:rgba(14,27,61,.55)}
       </fieldset>
       <fieldset style="grid-column:1/-1">
         <legend>Como preencher</legend>
-        <label><input type="radio" name="oModo" value="upd" checked> Atualizar as abas (mantém QTD PALLET, MASTER e o que foi digitado; adiciona cargas novas)</label>
+        <label><input type="radio" name="oModo" value="upd" checked> Atualizar as abas (mantém QTD PALLET, DOCA e o que foi digitado; adiciona cargas novas)</label>
         <label><input type="radio" name="oModo" value="new"> Substituir o conteúdo das abas das datas carregadas</label>
       </fieldset>
     </div>
@@ -223,13 +227,39 @@ dialog.dd::backdrop{background:rgba(14,27,61,.55)}
 /* ============ DADOS DE EXEMPLO (Escala.xlsx) ============ */
 const SEED = [{"title":"CARGAS DO PV 1","rows":[["23","PV3","Loja 23","Bebidas","1","","360.7 kg","Picking Não Sorter","","1627351",""],["57","PV3","Loja 57","Bebidas","1","","306.62 kg","Picking Não Sorter","","1627376",""],["62","PV3","Loja 62","Bebidas","1","","282.19 kg","Picking Não Sorter","","1627379",""],["28","PV3","Loja 28","Bebidas","1","","53.95 kg","Picking Não Sorter","","1627395",""],["36","PV1","Loja 29","Mercearia","","","23 kg","Picking","","1627843",""],["1","PV1","Loja 30","Mercearia","","","223 kg","Picking","","1627845",""],["5","PV1","Loja 31","Mercearia","","","52 kg","Picking","","1627846",""],["12","PV1","Loja 32","Mercearia","","","506 kg","Picking","","1627847",""],["16","PV1","Loja 33","Mercearia","","","199 kg","Picking","","1627848",""],["18","PV1","Loja 34","Mercearia","","","45 kg","Picking","","1627849",""],["19","PV1","Loja 35","Mercearia","","","45 kg","Picking","","1627850",""],["21","PV1","Loja 36","Mercearia","","","0 kg","Picking","","1627851",""],["22","PV1","Loja 37","Mercearia","","","0 kg","Picking","","1627852",""],["23","PV1","Loja 38","Mercearia","","","18 kg","Picking","","1627853",""],["24","PV1","Loja 39","Mercearia","","","143 kg","Picking","","1627854",""],["26","PV1","Loja 40","Mercearia","","","254 kg","Picking","","1627855",""],["36","PV1","Loja 41","Mercearia","","","5 kg","Picking","","1627856",""],["37","PV1","Loja 42","Mercearia","","","36 kg","Picking","","1627857",""],["41","PV1","Loja 43","Mercearia","","","48 kg","Picking","","1627858",""],["43","PV1","Loja 44","Mercearia","","","18 kg","Picking","","1627859",""],["45","PV1","Loja 45","Mercearia","","","59 kg","Picking","","1627860",""],["46","PV1","Loja 46","Mercearia","","","143 kg","Picking","","1627861",""],["49","PV1","Loja 47","Mercearia","","","29 kg","Picking","","1627862",""],["51","PV1","Loja 48","Mercearia","","","85 kg","Picking","","1627863",""],["53","PV1","Loja 49","Mercearia","","","654 kg","Picking","","1627864",""],["59","PV1","Loja 50","Mercearia","","","40 kg","Picking","","1627865",""],["65","PV1","Loja 51","Mercearia","","","27 kg","Picking","","1627866",""],["100","PV1","Loja 52","Mercearia","","","43 kg","Picking","","1627867",""],["90","PV1","Loja 53","Mercearia","","","98 kg","Picking","","1627868",""],["70","PV1","Loja 54","Mercearia","","","253 kg","Picking","","1627869",""],["30","PV1","Loja 55","Mercearia","","","27 kg","Picking","","1627870",""],["8","PV1","Loja 56","Mercearia","","","406 kg","Picking","","1627871",""],["75","PV1","Loja 57","Mercearia","","","74 kg","Picking","","1627872",""],["27","PV1","Loja 58","Mercearia","","","75 kg","Picking","","1627873",""],["33","PV1","Loja 59","Mercearia","","","42 kg","Picking","","1627874",""],["54","PV1","Loja 60","Mercearia","","","0 kg","Picking","","1627875",""],["30","PV3","Loja 30","Bebidas","1","","150.97 kg","Picking Não Sorter","","1631039",""],["37","PV3","Loja 37","Bebidas","1","98","1227.75 kg","Palete Box","","1631056",""],["39","PV3","Loja 39","Bebidas","4","98","6221.25 kg","Palete Box","","1631058",""],["41","PV3","Loja 41","Bebidas","1","98","2455.5 kg","Palete Box","","1631060",""],["43","PV3","Loja 43","Bebidas","2","98","2496.75 kg","Palete Box","","1631062",""],["46","PV3","Loja 46","Bebidas","1","98","1227.75 kg","Palete Box","","1631065",""],["48","PV3","Loja 48","Bebidas","2","98","3724.5 kg","Palete Box","","1631067",""],["49","PV3","Loja 49","Bebidas","1","98","1227.75 kg","Palete Box","","1631068",""],["51","PV3","Loja 51","Bebidas","3","98","3765.75 kg","Palete Box","","1631070",""],["52","PV3","Loja 52","Bebidas","2","98","3724.5 kg","Palete Box","","1631071",""],["57","PV3","Loja 57","Bebidas","1","98","2455.5 kg","Palete Box","","1631075",""],["63","PV3","Loja 63","Bebidas","4","98","5034.75 kg","Palete Box","","1631079",""],["80","PV3","Loja 80","Bebidas","1","98","2455.5 kg","Palete Box","","1631082",""],["70","PV3","Loja 70","Bebidas","2","98","2496.75 kg","Palete Box","","1631086",""],["35","PV3","Loja 35","Bebidas","7","98","8800.5 kg","Palete Box","","1631089",""],["27","PV3","Loja 27","Bebidas","2","98","2496.75 kg","Palete Box","","1631091",""],["31","PV3","Loja 31","Bebidas","3","98","4993.5 kg","Palete Box","","1631092",""],["28","PV3","Loja 28","Bebidas","3","98","4993.5 kg","Palete Box","","1631093",""],["22","PV3","Loja 22","Bebidas","1","","775.23 kg","Picking Não Sorter","","1631103",""],["23","PV3","Loja 23","Bebidas","1","","467.64 kg","Picking Não Sorter","","1631104",""],["32","PV3","Loja 32","Bebidas","1","","37.14 kg","Picking Não Sorter","","1631107",""],["36","PV3","Loja 36","Bebidas","1","","93.55 kg","Picking Não Sorter","","1631109",""],["39","PV3","Loja 39","Bebidas","1","","152 kg","Picking Não Sorter","","1631111",""],["41","PV3","Loja 41","Bebidas","1","","268.49 kg","Picking Não Sorter","","1631113",""],["42","PV3","Loja 42","Bebidas","1","","11.74 kg","Picking Não Sorter","","1631114",""],["43","PV3","Loja 43","Bebidas","1","","89.14 kg","Picking Não Sorter","","1631115",""],["46","PV3","Loja 46","Bebidas","1","","510.76 kg","Picking Não Sorter","","1631118",""],["47","PV3","Loja 47","Bebidas","1","","695.2 kg","Picking Não Sorter","","1631119",""],["48","PV3","Loja 48","Bebidas","1","","27.21 kg","Picking Não Sorter","","1631120",""],["49","PV3","Loja 49","Bebidas","1","","53.67 kg","Picking Não Sorter","","1631121",""],["51","PV3","Loja 51","Bebidas","1","","66.12 kg","Picking Não Sorter","","1631123",""],["52","PV3","Loja 52","Bebidas","1","","543.75 kg","Picking Não Sorter","","1631124",""],["57","PV3","Loja 57","Bebidas","1","","151.73 kg","Picking Não Sorter","","1631128",""],["58","PV3","Loja 58","Bebidas","1","","256.34 kg","Picking Não Sorter","","1631129",""],["62","PV3","Loja 62","Bebidas","1","","37.32 kg","Picking Não Sorter","","1631131",""],["63","PV3","Loja 63","Bebidas","1","","65.92 kg","Picking Não Sorter","","1631132",""],["80","PV3","Loja 80","Bebidas","1","","484.96 kg","Picking Não Sorter","","1631134",""],["35","PV3","Loja 35","Bebidas","1","","1018.68 kg","Picking Não Sorter","","1631140",""],["31","PV3","Loja 31","Bebidas","1","","142.64 kg","Picking Não Sorter","","1631143",""],["28","PV3","Loja 28","Bebidas","1","","1006.04 kg","Picking Não Sorter","","1631144",""],["32","PV3","Loja 32","Bebidas","1","99","312.15 kg","Sorter","","1631610",""],["30","PV3","Loja 30","Bebidas","1","98","1073.6 kg","Palete Box","","1633491",""],["30","PV3","Loja 30","Bebidas","3","","3209.12 kg","Picking Não Sorter","","1633492",""],["1","PV3","Loja 01","Bebidas","3","98","4250.68 kg","Palete Box","","1633495",""],["2","PV3","Loja 02","Bebidas","1","98","1137.5 kg","Palete Box","","1633496",""],["5","PV3","Loja 05","Bebidas","2","98","2317.58 kg","Palete Box","","1633497",""],["9","PV3","Loja 09","Bebidas","10","98","15034.78 kg","Palete Box","","1633498",""],["12","PV3","Loja 12","Bebidas","1","98","1137.5 kg","Palete Box","","1633499",""],["16","PV3","Loja 16","Bebidas","2","98","3113.18 kg","Palete Box","","1633500",""],["19","PV3","Loja 19","Bebidas","1","98","1137.5 kg","Palete Box","","1633501",""],["21","PV3","Loja 21","Bebidas","5","98","8363.01 kg","Palete Box","","1633502",""],["23","PV3","Loja 23","Bebidas","1","98","1300.2 kg","Palete Box","","1633503",""],["24","PV3","Loja 24","Bebidas","4","98","4980.36 kg","Palete Box","","1633504",""],["26","PV3","Loja 26","Bebidas","8","98","12771.79 kg","Palete Box","","1633505",""],["32","PV3","Loja 32","Bebidas","2","98","2593.8 kg","Palete Box","","1633506",""],["34","PV3","Loja 34","Bebidas","2","98","2111.68 kg","Palete Box","","1633507",""],["36","PV3","Loja 36","Bebidas","4","98","4698.88 kg","Palete Box","","1633508",""],["37","PV3","Loja 37","Bebidas","3","98","3447.4 kg","Palete Box","","1633509",""],["38","PV3","Loja 38","Bebidas","2","98","2373.8 kg","Palete Box","","1633510",""],["39","PV3","Loja 39","Bebidas","1","98","1293.6 kg","Palete Box","","1633511",""],["40","PV3","Loja 40","Bebidas","10","98","14603.48 kg","Palete Box","","1633512",""],["41","PV3","Loja 41","Bebidas","5","98","5915.95 kg","Palete Box","","1633513",""],["42","PV3","Loja 42","Bebidas","2","98","2587.2 kg","Palete Box","","1633514",""],["43","PV3","Loja 43","Bebidas","1","98","1073.6 kg","Palete Box","","1633515",""],["44","PV3","Loja 44","Bebidas","3","98","3624.2 kg","Palete Box","","1633516",""],["45","PV3","Loja 45","Bebidas","4","98","6241.3 kg","Palete Box","","1633517",""],["46","PV3","Loja 46","Bebidas","1","98","1300.2 kg","Palete Box","","1633518",""],["47","PV3","Loja 47","Bebidas","3","98","4557.41 kg","Palete Box","","1633519",""],["48","PV3","Loja 48","Bebidas","1","98","1293.6 kg","Palete Box","","1633520",""],["49","PV3","Loja 49","Bebidas","4","98","4829.78 kg","Palete Box","","1633521",""],["50","PV3","Loja 50","Bebidas","7","98","9197.62 kg","Palete Box","","1633522",""],["51","PV3","Loja 51","Bebidas","1","98","1230.24 kg","Palete Box","","1633523",""],["53","PV3","Loja 53","Bebidas","10","98","15185.71 kg","Palete Box","","1633524",""],["55","PV3","Loja 55","Bebidas","10","98","17027.3 kg","Palete Box","","1633525",""],["56","PV3","Loja 56","Bebidas","2","98","2267.33 kg","Palete Box","","1633526",""],["57","PV3","Loja 57","Bebidas","1","98","2034.56 kg","Palete Box","","1633527",""],["58","PV3","Loja 58","Bebidas","3","98","3811.95 kg","Palete Box","","1633528",""],["59","PV3","Loja 59","Bebidas","7","98","14354.58 kg","Palete Box","","1633529",""],["62","PV3","Loja 62","Bebidas","1","98","1038.08 kg","Palete Box","","1633530",""],["63","PV3","Loja 63","Bebidas","2","98","3328.16 kg","Palete Box","","1633531",""],["65","PV3","Loja 65","Bebidas","5","98","8083.34 kg","Palete Box","","1633533",""],["80","PV3","Loja 80","Bebidas","1","98","1008 kg","Palete Box","","1633534",""],["85","PV3","Loja 85","Bebidas","4","98","6216.32 kg","Palete Box","","1633535",""],["95","PV3","Loja 95","Bebidas","3","98","3560.93 kg","Palete Box","","1633536",""],["90","PV3","Loja 90","Bebidas","4","98","7431.72 kg","Palete Box","","1633537",""],["70","PV3","Loja 70","Bebidas","2","98","3690.72 kg","Palete Box","","1633538",""],["20","PV3","Loja 20","Bebidas","5","98","5845.65 kg","Palete Box","","1633539",""],["8","PV3","Loja 08","Bebidas","3","98","4400.34 kg","Palete Box","","1633540",""],["35","PV3","Loja 35","Bebidas","5","98","6245.48 kg","Palete Box","","1633541",""],["75","PV3","Loja 75","Bebidas","9","98","14724.24 kg","Palete Box","","1633542",""],["31","PV3","Loja 31","Bebidas","7","98","8848.4 kg","Palete Box","","1633543",""],["28","PV3","Loja 28","Bebidas","5","98","6281 kg","Palete Box","","1633544",""],["33","PV3","Loja 33","Bebidas","12","98","18363.98 kg","Palete Box","","1633545",""],["54","PV3","Loja 54","Bebidas","4","98","5857.61 kg","Palete Box","","1633546",""],["1","PV3","Loja 01","Bebidas","10","","12982.06 kg","Picking Não Sorter","","1633547",""],["2","PV3","Loja 02","Bebidas","8","","10460.75 kg","Picking Não Sorter","","1633548",""],["5","PV3","Loja 05","Bebidas","7","","10035.68 kg","Picking Não Sorter","","1633549",""],["9","PV3","Loja 09","Bebidas","10","","14253.51 kg","Picking Não Sorter","","1633550",""],["12","PV3","Loja 12","Bebidas","7","","9231.01 kg","Picking Não Sorter","","1633551",""],["16","PV3","Loja 16","Bebidas","7","","9297.97 kg","Picking Não Sorter","","1633552",""],["18","PV3","Loja 18","Bebidas","6","","7880.12 kg","Picking Não Sorter","","1633553",""],["19","PV3","Loja 19","Bebidas","5","","6758.77 kg","Picking Não Sorter","","1633554",""],["21","PV3","Loja 21","Bebidas","8","","12308 kg","Picking Não Sorter","","1633555",""],["22","PV3","Loja 22","Bebidas","4","","5463.08 kg","Picking Não Sorter","","1633556",""],["23","PV3","Loja 23","Bebidas","9","","11901.81 kg","Picking Não Sorter","","1633557",""],["24","PV3","Loja 24","Bebidas","6","","8392.95 kg","Picking Não Sorter","","1633558",""],["26","PV3","Loja 26","Bebidas","7","","10088.43 kg","Picking Não Sorter","","1633559",""],["32","PV3","Loja 32","Bebidas","4","","6270.04 kg","Picking Não Sorter","","1633560",""],["36","PV3","Loja 36","Bebidas","7","","9007.43 kg","Picking Não Sorter","","1633562",""],["37","PV3","Loja 37","Bebidas","5","","8043.61 kg","Picking Não Sorter","","1633563",""],["38","PV3","Loja 38","Bebidas","4","","6087.15 kg","Picking Não Sorter","","1633564",""],["39","PV3","Loja 39","Bebidas","4","","4662.53 kg","Picking Não Sorter","","1633565",""],["40","PV3","Loja 40","Bebidas","7","","10217.32 kg","Picking Não Sorter","","1633566",""],["41","PV3","Loja 41","Bebidas","7","","11586.93 kg","Picking Não Sorter","","1633567",""],["42","PV3","Loja 42","Bebidas","3","","4507.14 kg","Picking Não Sorter","","1633568",""],["43","PV3","Loja 43","Bebidas","3","","4834.02 kg","Picking Não Sorter","","1633569",""],["44","PV3","Loja 44","Bebidas","6","","9759.73 kg","Picking Não Sorter","","1633570",""],["45","PV3","Loja 45","Bebidas","8","","11511.18 kg","Picking Não Sorter","","1633571",""],["46","PV3","Loja 46","Bebidas","4","","5691.16 kg","Picking Não Sorter","","1633572",""],["47","PV3","Loja 47","Bebidas","4","","4818.91 kg","Picking Não Sorter","","1633573",""],["48","PV3","Loja 48","Bebidas","4","","5773.76 kg","Picking Não Sorter","","1633574",""],["49","PV3","Loja 49","Bebidas","4","","5784.21 kg","Picking Não Sorter","","1633575",""],["50","PV3","Loja 50","Bebidas","8","","12406.87 kg","Picking Não Sorter","","1633576",""],["51","PV3","Loja 51","Bebidas","6","","8515.74 kg","Picking Não Sorter","","1633577",""],["52","PV3","Loja 52","Bebidas","5","","7772.25 kg","Picking Não Sorter","","1633578",""],["53","PV3","Loja 53","Bebidas","7","","10150.89 kg","Picking Não Sorter","","1633579",""],["55","PV3","Loja 55","Bebidas","9","","13408.12 kg","Picking Não Sorter","","1633580",""],["56","PV3","Loja 56","Bebidas","6","","8363.85 kg","Picking Não Sorter","","1633581",""],["57","PV3","Loja 57","Bebidas","4","","5218.84 kg","Picking Não Sorter","","1633582",""],["58","PV3","Loja 58","Bebidas","5","","7043.19 kg","Picking Não Sorter","","1633583",""],["59","PV3","Loja 59","Bebidas","8","","11689.33 kg","Picking Não Sorter","","1633584",""],["62","PV3","Loja 62","Bebidas","4","","5422.06 kg","Picking Não Sorter","","1633585",""],["63","PV3","Loja 63","Bebidas","5","","6564.03 kg","Picking Não Sorter","","1633586",""],["65","PV3","Loja 65","Bebidas","7","","8896.23 kg","Picking Não Sorter","","1633588",""],["80","PV3","Loja 80","Bebidas","5","","7126.65 kg","Picking Não Sorter","","1633589",""],["85","PV3","Loja 85","Bebidas","4","","6048.74 kg","Picking Não Sorter","","1633590",""],["95","PV3","Loja 95","Bebidas","7","","11115.35 kg","Picking Não Sorter","","1633591",""],["90","PV3","Loja 90","Bebidas","9","","14393.88 kg","Picking Não Sorter","","1633592",""],["70","PV3","Loja 70","Bebidas","6","","8169.59 kg","Picking Não Sorter","","1633593",""],["20","PV3","Loja 20","Bebidas","8","","11457.68 kg","Picking Não Sorter","","1633594",""],["8","PV3","Loja 08","Bebidas","9","","12167.14 kg","Picking Não Sorter","","1633595",""],["35","PV3","Loja 35","Bebidas","5","","7200.52 kg","Picking Não Sorter","","1633596",""],["75","PV3","Loja 75","Bebidas","7","","10706.82 kg","Picking Não Sorter","","1633597",""],["27","PV3","Loja 27","Bebidas","5","","6985.08 kg","Picking Não Sorter","","1633598",""],["31","PV3","Loja 31","Bebidas","5","","8006.16 kg","Picking Não Sorter","","1633599",""],["28","PV3","Loja 28","Bebidas","7","","10331.61 kg","Picking Não Sorter","","1633600",""],["33","PV3","Loja 33","Bebidas","7","","10281.08 kg","Picking Não Sorter","","1633601",""],["54","PV3","Loja 54","Bebidas","4","","5576.1 kg","Picking Não Sorter","","1633602",""],["65","PV1","Loja 65","Mercearia","2","98","2329.2 kg","Palete Box","","1633643",""],["70","PV1","Loja 70","Mercearia","1","98","1164.6 kg","Palete Box","","1633647",""],["35","PV1","Loja 35","Mercearia","2","98","2329.2 kg","Palete Box","","1633650",""],["50","PV1","Loja 50","Mercearia","1","","11.93 kg","Picking Não Sorter","","1633998",""],["65","PV1","Loja 65","Mercearia","1","","21.1 kg","Picking Não Sorter","","1633999",""],["1","PV1","Loja 01","Mercearia","1","98","1185.24 kg","Palete Box","","1634319",""],["9","PV1","Loja 09","Mercearia","1","98","1185.24 kg","Palete Box","","1634325",""],["22","PV1","Loja 22","Mercearia","3","98","3634 kg","Palete Box","","1634326",""],["80","PV1","Loja 80","Mercearia","4","99","4953.4 kg","Sorter","","1634327",""],["8","PV1","Loja 08","Mercearia","1","98","1185.24 kg","Palete Box","","1634328",""],["54","PV1","Loja 54","Mercearia","3","98","3634 kg","Palete Box","","1634329",""],["26","PV1","Loja 26","Mercearia","4","98","5963.2 kg","Palete Box","","1634336",""],["63","PV1","Loja 63","Mercearia","2","98","2469.4 kg","Palete Box","","1634337",""],["85","PV1","Loja 85","Mercearia","4","98","4798.6 kg","Palete Box","","1634339",""],["95","PV1","Loja 95","Mercearia","3","98","3634 kg","Palete Box","","1634340",""],["75","PV1","Loja 75","Mercearia","3","98","3634 kg","Palete Box","","1634341",""],["22","","Loja 22","","","","1,930 kg","Palete Box","","1633663",""],["34","","Loja 34","","","","1,930 kg","Palete Box","","1633668",""],["36","","Loja 36","","","","2,880 kg","Palete Box","","1633669",""],["39","","Loja 39","","","","1,930 kg","Palete Box","","1633672",""],["43","","Loja 43","","","","1,930 kg","Palete Box","","1633676",""],["44","","Loja 44","","","","1,930 kg","Palete Box","","1633677",""],["47","","Loja 47","","","","1,930 kg","Palete Box","","1633680",""],["49","","Loja 49","","","","2,880 kg","Palete Box","","1633682",""],["52","","Loja 52","","","","2,880 kg","Palete Box","","1633685",""],["55","","Loja 55","","1","","2,778 kg","Palete Box","","1633687",""],["56","","Loja 56","","","","1,930 kg","Palete Box","","1633688",""],["57","","Loja 57","","","","1,930 kg","Palete Box","","1633689",""],["59","","Loja 59","","","","1,930 kg","Palete Box","","1633691",""],["63","","Loja 63","","","","1,930 kg","Palete Box","","1633693",""],["65","","Loja 65","","","","1,930 kg","Palete Box","","1633694",""],["95","","Loja 95","","","","1,930 kg","Palete Box","","1633697",""],["70","","Loja 70","","","","1,930 kg","Palete Box","","1633699",""],["30","","Loja 30","","","","3,830 kg","Palete Box","","1633701",""],["75","","Loja 75","","2","","3,627 kg","Palete Box","","1633703",""],["31","","Loja 31","","1","","2,778 kg","Palete Box","","1633705",""],["54","","Loja 54","","","","1,930 kg","Palete Box","","1633708",""]]},{"title":"CARGAS PERECIVEIS","rows":[]}];
 
-const COLS = ['LOJA','PAV','LOJAS','TIPO DE CARGA','QTD PALLET','DOCA','PESO','CUBAGEM','OBSERVAÇÃO','MASTER','CARGAS INFORMADAS','STATUS'];
-const C = {LOJA:0,PAV:1,LOJAS:2,TIPO:3,PAL:4,DOCA:5,PESO:6,CUB:7,OBS:8,MASTER:9,CARGA:10,STATUS:11};
+const COLS = ['LOJA','PAV','LOJAS','TIPO DE CARGA','QTD PALLET','DOCA','PESO','OBSERVAÇÃO','CARGAS INFORMADAS','STATUS'];
+const C = {LOJA:0,PAV:1,LOJAS:2,TIPO:3,PAL:4,DOCA:5,PESO:6,OBS:7,CARGA:8,STATUS:9};
 const NC = COLS.length, GRAY = new Set([0,3]);
-// linhas salvas antes da coluna CUBAGEM tinham 11 colunas: insere a cubagem vazia depois do PESO
-const migRow = r => (r.length===11 ? [...r.slice(0,7),'',...r.slice(7)] : r.slice(0,NC).concat(new Array(Math.max(0,NC-r.length)).fill('')));
+// versões anteriores: 11 colunas (…PESO, OBS, MASTER, CARGA, STATUS) ou 12 (…PESO, CUBAGEM, OBS, MASTER, CARGA, STATUS)
+const migRow = r => {
+  if(r.length===12) r=[...r.slice(0,7),r[8],r[10],r[11]];        // tira CUBAGEM e MASTER
+  else if(r.length===11) r=[...r.slice(0,8),r[9],r[10]];         // tira MASTER
+  return r.slice(0,NC).concat(new Array(Math.max(0,NC-r.length)).fill(''));
+};
+/* seções por CD: PV1 e PV2 → CD 1 MERCEARIA · PV3 → CD 3 BEBIDAS · perecíveis → CD 2 PERECIVEL */
+const SEC_CD1='CD 1 MERCEARIA', SEC_CD3='CD 3 BEBIDAS', SEC_CD2='CD 2 PERECIVEL', SEC_OUT='OUTRAS CARGAS';
+const SEC_ORD=[SEC_CD1,SEC_CD3,SEC_CD2,SEC_OUT];
+function secNome(t){
+  const n=String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  if(/perec/.test(n)) return SEC_CD2;
+  if(/pv3|bebida/.test(n)) return SEC_CD3;
+  if(/pv[12]|mercearia/.test(n)) return SEC_CD1;
+  return String(t||'').toUpperCase();
+}
+// renomeia as seções antigas e junta as que viraram a mesma (ex.: PV 1 + PV 2 → CD 1 MERCEARIA)
+function migSecs(secs){
+  const out=[];
+  (secs||[]).forEach(x=>{
+    const t=secNome(x.title), rows=(x.rows||[]).map(migRow), prev=out.find(o=>o.title===t);
+    if(!prev){ out.push({title:t,rows}); return; }
+    const cheia=r=>r.some(v=>String(v??'').trim());
+    prev.rows=prev.rows.filter(cheia).concat(rows.filter(cheia));
+  });
+  out.forEach(o=>{ if(!o.rows.length) o.rows.push(blank()); });
+  return out;
+}
 const ehMista = v => /mist/i.test(String(v||''));   // LOJA e TIPO DE CARGA têm fundo cinza, como na planilha
-const LS_KEY = 'cd107_escala_pcp_v2', LS_OLD = 'cd107_escala_pcp_v1';
+const LS_KEY = 'cd107_escala_pcp_v3', LS_V2 = 'cd107_escala_pcp_v2', LS_OLD = 'cd107_escala_pcp_v1';   // v3: sem CUBAGEM/MASTER, seções por CD
 const TITULO = 'Escala de Entrega - CD Nova Santa Rita';
 const DOW = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 const fmtD = k => k ? `${k.slice(8,10)}/${k.slice(5,7)}/${k.slice(0,4)}` : '';
@@ -237,28 +267,28 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const pad2 = n => String(n).padStart(2,'0');
 const today = () => { const d=new Date(); return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; };
-const blank = () => new Array(NC).fill('');
+function blank(){ return new Array(NC).fill(''); }
 
 let book, state, undoSnap=null, saveT, toastT;   // book = {active:'AAAA-MM-DD', escalas:{data:{title,date,sections}}}; state = aba ativa
 
 function novaEscala(date,title){
   return {title:title||TITULO, date,
-    sections:[{title:'CARGAS DO PV 1',rows:[blank(),blank(),blank()]},{title:'CARGAS PERECIVEIS',rows:[blank(),blank(),blank()]}]};
+    sections:[{title:SEC_CD1,rows:[blank(),blank(),blank()]},{title:SEC_CD3,rows:[blank()]},{title:SEC_CD2,rows:[blank()]}]};
 }
 function load(){
   try{
-    const b=JSON.parse(localStorage.getItem(LS_KEY)||'null');
+    const b=JSON.parse(localStorage.getItem(LS_KEY)||'null') || JSON.parse(localStorage.getItem(LS_V2)||'null');   // v2 fica intacta como backup
     if(b&&b.escalas&&Object.keys(b.escalas).length){
       if(!b.escalas[b.active]) b.active=Object.keys(b.escalas).sort().pop();
-      Object.values(b.escalas).forEach(e=>e.sections.forEach(x=>{ x.rows=x.rows.map(migRow); }));
+      Object.values(b.escalas).forEach(e=>{ e.sections=migSecs(e.sections); });
       return b;
     }
   }catch(e){}
   let s=null; try{ s=JSON.parse(localStorage.getItem(LS_OLD)||'null'); }catch(e){}   // migra a escala única da versão anterior
   if(!(s&&Array.isArray(s.sections))) s={title:TITULO, date:today(),
-    sections:SEED.map(x=>({title:x.title,rows:x.rows.length?x.rows.map(migRow):[blank(),blank(),blank()]}))};
+    sections:SEED.map(x=>({title:x.title,rows:x.rows.length?x.rows:[blank(),blank(),blank()]}))};
   if(!s.date) s.date=today();
-  s.sections.forEach(x=>{ x.rows=x.rows.map(migRow); });
+  s.sections=migSecs(s.sections);
   return {active:s.date, escalas:{[s.date]:s}};
 }
 function useTab(d){ book.active=d; state=book.escalas[d]; state.date=d; }
@@ -302,11 +332,18 @@ function render(focus){
   if(focus) focusCell(...focus);
 }
 const nCargas = e => e.sections.reduce((a,s)=>a+s.rows.filter(r=>r.some(v=>String(v).trim())).length,0);
+// cargas sem DOCA = ainda não listadas → a data da aba (Dtainclusaopedido) fica em vermelho
+const nSemDoca = e => e.sections.reduce((a,s)=>a+s.rows.filter(r=>r.some(v=>String(v).trim()) && !String(r[C.DOCA]??'').trim()).length,0);
+function marcaSemDoca(tab,n){
+  if(!tab) return; tab.classList.toggle('semdoca',n>0);
+  const b=tab.querySelector('button.tb'); if(b) b.title = n ? `${n} carga(s) sem doca: ainda não listada(s)` : 'Todas as cargas com doca';
+}
 function renderTabs(){
   const ks=Object.keys(book.escalas).sort();
   $('#tabs').innerHTML = ks.map(k=>{
     const on=k===book.active, dw=DOW[new Date(k+'T12:00:00').getDay()];
-    return `<div class="tab${on?' on':''}"><button type="button" class="tb" role="tab" aria-selected="${on}" data-tab="${k}"><span>${dw}</span>${fmtD(k)}<i>${nCargas(book.escalas[k])}</i></button>`
+    const sd=nSemDoca(book.escalas[k]);
+    return `<div class="tab${on?' on':''}${sd?' semdoca':''}"><button type="button" class="tb" role="tab" aria-selected="${on}" data-tab="${k}" title="${sd?`${sd} carga(s) sem doca: ainda não listada(s)`:'Todas as cargas com doca'}"><span>${dw}</span>${fmtD(k)}<i>${nCargas(book.escalas[k])}</i></button>`
       + (ks.length>1?`<button type="button" class="tx" data-dtab="${k}" title="Excluir aba" aria-label="Excluir aba ${fmtD(k)}">×</button>`:'')+`</div>`;
   }).join('') + `<button type="button" class="tadd" data-addtab title="Criar aba para outra data">+ Aba</button>`;
   const on=$('#tabs .tab.on'); if(on) on.scrollIntoView({block:'nearest',inline:'nearest'});
@@ -329,11 +366,12 @@ $('#tabs').addEventListener('click',e=>{
   }
 });
 function summary(){
-  let n=0,pal=0,palEst=0,kg=0,m3=0; const pav={};
-  state.sections.forEach(s=>s.rows.forEach(r=>{ if(!r.some(v=>String(v).trim())) return; n++; pal+=num(r[C.PAL]); if(isEst(r[C.PAL])) palEst+=num(r[C.PAL]); kg+=parsePeso(r[C.PESO]); m3+=parsePeso(String(r[C.CUB]||'').replace(/m[³3]/i,'')); if(r[C.PAV]) pav[r[C.PAV]]=(pav[r[C.PAV]]||0)+1; }));
-  $('#sum').innerHTML=`<span>Cargas <b>${n.toLocaleString('pt-BR')}</b></span><span>Pallets <b>${pal.toLocaleString('pt-BR')}</b>${palEst?` <i style="color:#6A7085">(~${palEst.toLocaleString('pt-BR')} estimados)</i>`:''}</span><span>Peso total <b>${kg.toLocaleString('pt-BR',{maximumFractionDigits:0})} kg</b></span>${m3?`<span>Cubagem <b>${m3.toLocaleString('pt-BR',{maximumFractionDigits:1})} m³</b></span>`:''}`
+  let n=0,pal=0,palEst=0,kg=0,semDoca=0; const pav={};
+  state.sections.forEach(s=>s.rows.forEach(r=>{ if(!r.some(v=>String(v).trim())) return; n++; pal+=num(r[C.PAL]); if(isEst(r[C.PAL])) palEst+=num(r[C.PAL]); kg+=parsePeso(r[C.PESO]); if(!String(r[C.DOCA]??'').trim()) semDoca++; if(r[C.PAV]) pav[r[C.PAV]]=(pav[r[C.PAV]]||0)+1; }));
+  $('#sum').innerHTML=`<span>Cargas <b>${n.toLocaleString('pt-BR')}</b></span><span>Pallets <b>${pal.toLocaleString('pt-BR')}</b>${palEst?` <i style="color:#6A7085">(~${palEst.toLocaleString('pt-BR')} estimados)</i>`:''}</span><span>Peso total <b>${kg.toLocaleString('pt-BR',{maximumFractionDigits:0})} kg</b></span>${semDoca?`<span style="color:#D0021B">Sem doca <b style="color:#D0021B">${semDoca}</b></span>`:''}`
     + Object.keys(pav).sort().map(k=>`<span>${esc(k)} <b>${pav[k]}</b></span>`).join('');
   const bd=document.querySelector('#tabs .tab.on i'); if(bd) bd.textContent=n;
+  marcaSemDoca(document.querySelector('#tabs .tab.on'),semDoca);
 }
 function focusCell(si,ri,c){
   const el=document.querySelector(`input[data-s="${si}"][data-i="${ri}"][data-c="${c}"]`);
@@ -401,7 +439,7 @@ $('#date').addEventListener('change',e=>{   // trocar a data renomeia a aba
   book.escalas[nd]=state; delete book.escalas[od]; useTab(nd); save(); render();
 });
 $('#tUndo').addEventListener('click',()=>{ if(!undoSnap) return; book=JSON.parse(undoSnap); undoSnap=null; useTab(book.escalas[book.active]?book.active:Object.keys(book.escalas).sort().pop()); save(); render(); $('#toast').style.display='none'; });
-$('#bSec').addEventListener('click',()=>{ const t=prompt('Nome da seção','CARGAS DO PV 2'); if(!t) return; state.sections.push({title:t.toUpperCase(),rows:[blank()]}); save(); render([state.sections.length-1,0,0]); });
+$('#bSec').addEventListener('click',()=>{ const t=prompt('Nome da seção',SEC_CD2); if(!t) return; state.sections.push({title:t.toUpperCase(),rows:[blank()]}); save(); render([state.sections.length-1,0,0]); });
 $('#bNew').addEventListener('click',()=>{ if(!confirm(`Limpar a aba ${fmtD(book.active)}? As outras abas não mudam.`)) return; snapshot(); book.escalas[book.active]=novaEscala(book.active,state.title); useTab(book.active); save(); render([0,0,0]); toast('Aba limpa.',true); });
 $('#bPrint').addEventListener('click',()=>window.print());
 
@@ -424,10 +462,13 @@ $('#fImp').addEventListener('change',async e=>{
     }
     if(!hdr) throw new Error('não achei o cabeçalho LOJA / PAV / LOJAS…');
     const secs=[]; let cur=null;
-    const temCub=[...Array(NC).keys()].some(c=>/cubagem/i.test(cellTxt(ws.getRow(hdr).getCell(c+1))));
+    const nh=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z]/g,'');
+    const alvo={}; COLS.forEach((h,i)=>alvo[nh(h)]=i);
+    const mapa=[]; for(let c=1;c<=20;c++){ const k=nh(cellTxt(ws.getRow(hdr).getCell(c))); if(k in alvo) mapa.push([c,alvo[k]]); }
     for(let r=hdr+1;r<=ws.rowCount;r++){
-      let v=[]; for(let c=1;c<=(temCub?NC:11);c++) v.push(cellTxt(ws.getRow(r).getCell(c)));
-      v=migRow(v);
+      const v=blank(); let outros='';
+      for(let c=1;c<=20;c++){ const t=cellTxt(ws.getRow(r).getCell(c)); if(!t) continue; const m=mapa.find(x=>x[0]===c); if(m) v[m[1]]=t; else if(!outros) outros=t; }
+      if(!v.some(Boolean) && outros) v[0]=outros;   // título de seção mesclado fora das colunas conhecidas
       if(!v.some(Boolean)) continue;
       const filled=v.filter(Boolean);
       if(filled.length===1 && !/^[\d.,\s]+(kg)?$/i.test(filled[0])){   // linha de seção: um único texto (ex.: CARGAS DO PV 1)
@@ -438,7 +479,7 @@ $('#fImp').addEventListener('change',async e=>{
     if(!secs.length) throw new Error('nenhuma linha de carga encontrada');
     secs.forEach(s=>{ if(!s.rows.length) s.rows.push(blank()); });
     snapshot(); const d=date||state.date||today(), had=!!book.escalas[d];
-    book.escalas[d]={title,date:d,sections:secs}; useTab(d); save(); render();
+    book.escalas[d]={title,date:d,sections:migSecs(secs)}; useTab(d); save(); render();
     toast(`Importado na aba ${fmtD(d)}${had?' (substituída)':''}: ${secs.reduce((a,s)=>a+s.rows.filter(r=>r.some(Boolean)).length,0)} cargas em ${secs.length} seção(ões).`,true);
   }catch(err){ alert('Não consegui importar: '+err.message); }
 });
@@ -446,15 +487,15 @@ $('#fImp').addEventListener('change',async e=>{
 /* ============ EXPORTAR com a mesma formatação da planilha ============ */
 $('#bExp').addEventListener('click',async()=>{
   const wb=new ExcelJS.Workbook(), ws=wb.addWorksheet('Plan1',{pageSetup:{orientation:'landscape',paperSize:9,fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:.3,right:.3,top:.4,bottom:.4,header:.2,footer:.2}}});
-  ws.columns=[8,8,17,14,10,8,13,12,22,12,14,14].map(w=>({width:w}));
+  ws.columns=[8,8,17,14,10,8,13,22,14,14].map(w=>({width:w}));
   const B=s=>({style:s,color:{argb:'FF000000'}}), box=s=>({top:B(s),left:B(s),bottom:B(s),right:B(s)});
   const fill=a=>({type:'pattern',pattern:'solid',fgColor:{argb:a}});
   const mid={vertical:'middle',horizontal:'center',wrapText:true};
   const [y,m,d]=(state.date||today()).split('-');
-  ws.mergeCells('A1:I1'); Object.assign(ws.getCell('A1'),{value:state.title,font:{name:'Arial',size:16,bold:true},alignment:{vertical:'middle'}});
-  ws.mergeCells('K1:L1'); Object.assign(ws.getCell('K1'),{value:`${d}/${m}/${y}`,font:{name:'Arial',size:14,bold:true},fill:fill('FFFFC000'),alignment:mid,border:box('thick')});
+  ws.mergeCells('A1:G1'); Object.assign(ws.getCell('A1'),{value:state.title,font:{name:'Arial',size:16,bold:true},alignment:{vertical:'middle'}});
+  ws.mergeCells('I1:J1'); Object.assign(ws.getCell('I1'),{value:`${d}/${m}/${y}`,font:{name:'Arial',size:14,bold:true},fill:fill('FFFFC000'),alignment:mid,border:box('thick')});
   ws.getRow(1).height=37.5;
-  ws.mergeCells('A3:L3'); Object.assign(ws.getCell('A3'),{value:'PCP',font:{name:'Arial',size:14,bold:true},fill:fill('FFD8D8D8'),alignment:mid,border:box('thick')});
+  ws.mergeCells('A3:J3'); Object.assign(ws.getCell('A3'),{value:'PCP',font:{name:'Arial',size:14,bold:true},fill:fill('FFD8D8D8'),alignment:mid,border:box('thick')});
   ws.getRow(3).height=22;
   COLS.forEach((h,i)=>Object.assign(ws.getRow(4).getCell(i+1),{value:h,font:{name:'Arial',size:12,bold:true},fill:fill('FFD8D8D8'),alignment:mid,border:box('medium')}));
   ws.getRow(4).height=48;
@@ -489,10 +530,8 @@ book=load(); useTab(book.active); render();
    Junta pelo número da carga e gera uma linha por CARGA × LOJA.
    ===================================================================== */
 (function(){
-  const PAV_SEC = {
-    PV1:'CARGAS DO PV 1', PV2:'CARGAS DO PV 2', PV3:'CARGAS DO PV 3 · BEBIDAS', PER:'CARGAS PERECIVEIS', '':'OUTRAS CARGAS'
-  };
-  const PAV_ORD = ['PV1','PV2','PV3','PER',''];
+  const PAV_SEC = { PV1:SEC_CD1, PV2:SEC_CD1, PV3:SEC_CD3, PER:SEC_CD2, '':SEC_OUT };
+  const secDe = pav => PAV_SEC[pav] || SEC_OUT;
   /* Subdivisão do Metabase → coluna TIPO DE CARGA (as que não estão aqui entram com o nome original) */
   const TIPO_CARGA = { 'alimentos':'Mercearia', 'bomboniere':'Mercearia', 'bebidas':'Bebidas', 'congelados':'Congelados', 'resfriados':'Resfriados' };
   const OBS_ORD = ['Picking Sorter','Palete Inteiro Sorter','Sorter','Picking Não Sorter','Palete Inteiro Não Sorter','Palete Box'];
@@ -700,7 +739,7 @@ book=load(); useTab(book.active); render();
     r[C.PAV]=x.pav; r[C.TIPO]=x.tipoCarga;
     if(x.palReal) r[C.PAL]=String(Math.round(x.palReal));
     else if(cfg().on && x.pal) r[C.PAL]='~'+x.pal;
-    r[C.DOCA]=x.doca; r[C.PESO]=pesoTxt(x.peso); r[C.CUB]=x.cub?`${Math.round(x.cub*1000)/1000} m³`:'';
+    r[C.DOCA]=x.doca; r[C.PESO]=pesoTxt(x.peso);
     r[C.OBS]=x.obs; r[C.CARGA]=x.carga; r[C.STATUS]=x.status;
     return r;
   }
@@ -809,14 +848,12 @@ book=load(); useTab(book.active); render();
     const out=[]; state.sections.forEach((s,si)=>s.rows.forEach((r,ri)=>{ const c=toInt(r[C.CARGA]); if(c) out.push({si,ri,carga:c,loja:lojaKey(r[C.LOJA])}); }));
     return out;
   }
-  function secIndex(pav){
-    const t=PAV_SEC[pav]||PAV_SEC[''];
+  function secIndex(t){
     let i=state.sections.findIndex(s=>norm(s.title)===norm(t));
-    if(i<0 && pav==='PV1') i=state.sections.findIndex(s=>/pv1$/.test(norm(s.title)));
     if(i<0){
-      const ordem=PAV_ORD.indexOf(pav);
+      const ordem=SEC_ORD.indexOf(t);
       let pos=state.sections.length;
-      for(let k=ordem+1;k<PAV_ORD.length;k++){ const j=state.sections.findIndex(s=>norm(s.title)===norm(PAV_SEC[PAV_ORD[k]])); if(j>=0){ pos=j; break; } }
+      for(let k=ordem+1;k<SEC_ORD.length;k++){ const j=state.sections.findIndex(s=>norm(s.title)===norm(SEC_ORD[k])); if(j>=0){ pos=j; break; } }
       state.sections.splice(pos,0,{title:t,rows:[]}); i=pos;
     }
     return i;
@@ -827,16 +864,16 @@ book=load(); useTab(book.active); render();
   function aplicar(lista, modo){
     if(modo==='new'){
       const secs=[];
-      PAV_ORD.forEach(p=>{ const g=lista.filter(x=>x.pav===p); if(g.length) secs.push({title:PAV_SEC[p],rows:g.map(paraLinha)}); });
-      state.sections=secs.length?secs:[{title:PAV_SEC.PV1,rows:[blank()]}];
+      SEC_ORD.forEach(t=>{ const g=lista.filter(x=>secDe(x.pav)===t); if(g.length) secs.push({title:t,rows:g.map(paraLinha)}); });
+      state.sections=secs.length?secs:[{title:SEC_CD1,rows:[blank()]}];
       return {upd:0, add:lista.length};
     }
-    // cargas que agora são mistas: remove as linhas antigas por loja (guarda MASTER e QTD real)
+    // cargas que agora são mistas: remove as linhas antigas por loja (guarda DOCA, STATUS e QTD real)
     const mistas=new Set(lista.filter(x=>x.loja==='M').map(x=>x.carga)), herda={};
     if(mistas.size) state.sections.forEach(s=>{ s.rows=s.rows.filter(r=>{
       const c=toInt(r[C.CARGA]); if(!mistas.has(c) || lojaKey(r[C.LOJA])==='M') return true;
-      const h=herda[c]=herda[c]||{master:'',doca:'',status:'',pal:0,todasReais:true};
-      ['master','doca','status'].forEach(k=>{ const v=String(r[C[k.toUpperCase()]]||'').trim(); if(!h[k] && v) h[k]=v; });
+      const h=herda[c]=herda[c]||{doca:'',status:'',pal:0,todasReais:true};
+      ['doca','status'].forEach(k=>{ const v=String(r[C[k.toUpperCase()]]||'').trim(); if(!h[k] && v) h[k]=v; });
       const p=String(r[C.PAL]||'').trim(); if(/^\d+$/.test(p)) h.pal+=+p; else h.todasReais=false;
       return false; }); });
     // atualizar: casa por CARGA + LOJA
@@ -846,18 +883,18 @@ book=load(); useTab(book.active); render();
       const e=idx.get(x.carga+'|'+x.loja);
       if(e){
         const r=state.sections[e.si].rows[e.ri], n=paraLinha(x);
-        [C.LOJA,C.PAV,C.LOJAS,C.TIPO,C.PESO,C.CUB,C.OBS,C.CARGA].forEach(c=>{ if(n[c]!=='') r[c]=n[c]; });
+        [C.LOJA,C.PAV,C.LOJAS,C.TIPO,C.PESO,C.OBS,C.CARGA].forEach(c=>{ if(n[c]!=='') r[c]=n[c]; });
         if(n[C.DOCA]) r[C.DOCA]=n[C.DOCA];
         if(n[C.STATUS]) r[C.STATUS]=n[C.STATUS];
         if(n[C.PAL] && (!String(r[C.PAL]||'').trim() || isEst(r[C.PAL]))) r[C.PAL]=n[C.PAL];   // nunca sobrescreve valor real
         upd++;
       } else {
         const n=paraLinha(x), h=herda[x.carga];
-        if(h){ if(h.master) n[C.MASTER]=h.master; if(h.doca && !n[C.DOCA]) n[C.DOCA]=h.doca; if(h.status && !n[C.STATUS]) n[C.STATUS]=h.status; if(h.todasReais && h.pal && !x.palReal) n[C.PAL]=String(h.pal); }
-        (novos[x.pav]=novos[x.pav]||[]).push(n); add++;
+        if(h){ if(h.doca && !n[C.DOCA]) n[C.DOCA]=h.doca; if(h.status && !n[C.STATUS]) n[C.STATUS]=h.status; if(h.todasReais && h.pal && !x.palReal) n[C.PAL]=String(h.pal); }
+        (novos[secDe(x.pav)]=novos[secDe(x.pav)]||[]).push(n); add++;
       }
     });
-    PAV_ORD.forEach(p=>{ if(!novos[p]) return; const si=secIndex(p); const rows=state.sections[si].rows;
+    SEC_ORD.forEach(t=>{ if(!novos[t]) return; const si=secIndex(t); const rows=state.sections[si].rows;
       while(rows.length && vazia(rows[rows.length-1])) rows.pop();
       rows.push(...novos[p]); });
     state.sections.forEach(s=>{ if(!s.rows.length) s.rows.push(blank()); });
