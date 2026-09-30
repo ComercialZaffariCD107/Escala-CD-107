@@ -119,7 +119,31 @@ dialog.dd::backdrop{background:rgba(14,27,61,.55)}
 .dd-f button.go{background:#217346;border-color:#217346;color:#fff}
 .dd-f button:disabled{opacity:.45;cursor:not-allowed}
 
+/* ============ IMPRESSÃO POR CD ============ */
+#printArea{display:none}
+.pSel{display:flex;flex-direction:column;gap:6px}
+.pSel label{display:flex;align-items:center;gap:10px;font-size:14px;min-height:40px;padding:6px 10px;border:1px solid #D0D4DE;border-radius:8px;cursor:pointer;background:#fff}
+.pSel label:hover{border-color:var(--xl);background:#EEF6F1}
+.pSel label small{margin-left:auto;color:#5A6072;font-size:12px}
+.pSel input{width:18px;height:18px;accent-color:var(--xl)}
+.pSel .all{background:#F4F6FA;font-weight:700}
+.pp .head{margin-bottom:10px}
+.pp .tt{font:700 20px Arial,sans-serif}
+.pp .date{font-size:18px;padding:4px 14px}
+.pp table.esc{min-width:0}
+.pp .esc td{height:26px;padding:0 3px;font-size:11px}
+.pp .esc td.est{font-style:italic;color:#6A7085}
+.pp .esc tr.sec td{height:34px;font-size:16px}
+.pp .esc thead tr.cols th{height:36px;font-size:10.5px}
+.pp .esc thead tr.pcp th{height:26px;font-size:15px}
+.pp .ptot{display:flex;gap:18px;font:12px Arial,sans-serif;margin-top:6px}
+.pp .ptot b{font-size:13px}
+.pp{break-after:page;page-break-after:always}
+.pp:last-child{break-after:auto;page-break-after:auto}
+
 @media print{
+  body.printing .sheet,body.printing dialog{display:none!important}
+  body.printing #printArea{display:block}
   @page{size:A4 landscape;margin:8mm}
   html,body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .bar,.addrow,.act,.hint,.sum,.toast,.tabs{display:none!important}
@@ -220,6 +244,13 @@ dialog.dd::backdrop{background:rgba(14,27,61,.55)}
   </div>
   <div class="dd-f"><button type="button" id="dCancel">Cancelar</button><button type="button" class="go" id="dGo" disabled>Preencher escala</button></div>
 </dialog>
+
+<dialog class="dd" id="dPrint" aria-labelledby="dPrintT" style="width:min(460px,calc(100% - 24px))">
+  <div class="dd-h"><div><h2 id="dPrintT">Imprimir escala</h2><p>Escolha os CDs · cada um sai numa folha separada</p></div><button type="button" class="xc" id="pClose" aria-label="Fechar">×</button></div>
+  <div class="dd-b"><div class="pSel" id="pList"></div></div>
+  <div class="dd-f"><button type="button" id="pCancel">Cancelar</button><button type="button" class="go" id="pGo">Imprimir</button></div>
+</dialog>
+<div id="printArea"></div>
 
 <div class="toast" id="toast" role="status"><span id="tMsg"></span><button type="button" id="tUndo">Desfazer</button></div>
 
@@ -441,7 +472,52 @@ $('#date').addEventListener('change',e=>{   // trocar a data renomeia a aba
 $('#tUndo').addEventListener('click',()=>{ if(!undoSnap) return; book=JSON.parse(undoSnap); undoSnap=null; useTab(book.escalas[book.active]?book.active:Object.keys(book.escalas).sort().pop()); save(); render(); $('#toast').style.display='none'; });
 $('#bSec').addEventListener('click',()=>{ const t=prompt('Nome da seção',SEC_CD2); if(!t) return; state.sections.push({title:t.toUpperCase(),rows:[blank()]}); save(); render([state.sections.length-1,0,0]); });
 $('#bNew').addEventListener('click',()=>{ if(!confirm(`Limpar a aba ${fmtD(book.active)}? As outras abas não mudam.`)) return; snapshot(); book.escalas[book.active]=novaEscala(book.active,state.title); useTab(book.active); save(); render([0,0,0]); toast('Aba limpa.',true); });
-$('#bPrint').addEventListener('click',()=>window.print());
+/* ============ IMPRIMIR: escolhe os CDs, uma folha por CD ============ */
+const PSEL_KEY='cd107_escala_print_sel';
+const cdOrd = t => { const m=/^CD\s*(\d+)/i.exec(t||''); return m?+m[1]:99; };
+const cheia = r => r.some(v=>String(v??'').trim());
+function abrirImpressao(){
+  let marcados=null; try{ marcados=JSON.parse(localStorage.getItem(PSEL_KEY)||'null'); }catch(e){}
+  const secs=state.sections.map((s,i)=>({i,t:s.title,n:s.rows.filter(cheia).length}))
+    .sort((a,b)=>cdOrd(a.t)-cdOrd(b.t)||a.i-b.i);
+  $('#pList').innerHTML = `<label class="all"><input type="checkbox" id="pAll"> Todos os CDs</label>`
+    + secs.map(x=>`<label><input type="checkbox" value="${x.i}" ${(!marcados||marcados.includes(x.t))&&x.n?'checked':''}> ${esc(x.t)} <small>${x.n} carga(s)</small></label>`).join('');
+  atualizarPSel(); $('#dPrint').showModal();
+}
+function atualizarPSel(){
+  const cbs=[...document.querySelectorAll('#pList input[value]')], on=cbs.filter(c=>c.checked);
+  $('#pAll').checked = on.length===cbs.length; $('#pAll').indeterminate = on.length>0 && on.length<cbs.length;
+  $('#pGo').disabled=!on.length;
+  $('#pGo').textContent = on.length ? `Imprimir ${on.length} folha(s)` : 'Imprimir';
+}
+$('#pList').addEventListener('change',e=>{
+  if(e.target.id==='pAll') document.querySelectorAll('#pList input[value]').forEach(c=>c.checked=e.target.checked);
+  atualizarPSel();
+});
+function montarImpressao(idx){
+  const [y,m,d]=(state.date||today()).split('-');
+  const head=`<thead><tr class="pcp"><th colspan="${NC}">PCP</th></tr><tr class="cols">${COLS.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead>`;
+  const cols=$('#tbl colgroup').innerHTML.replace(/<col class="actc"[^>]*>/,'');
+  $('#printArea').innerHTML = idx.map(i=>{
+    const s=state.sections[i], rows=s.rows.filter(cheia);
+    let pal=0, kg=0; rows.forEach(r=>{ pal+=num(r[C.PAL]); kg+=parsePeso(r[C.PESO]); });
+    const body=(rows.length?rows:[blank()]).map(r=>`<tr class="row">${r.map((v,c)=>`<td class="${GRAY.has(c)?'g':''}${c===C.PAL&&isEst(v)?' est':''}">${esc(v)}</td>`).join('')}</tr>`).join('');
+    return `<section class="pp"><div class="head"><div class="tt">${esc(state.title)}</div><div class="date">${d}/${m}/${y}</div></div>
+      <table class="esc"><colgroup>${cols}</colgroup>${head.replace('</thead>',`<tr class="sec"><td colspan="${NC}">${esc(s.title)}</td></tr></thead>`)}<tbody>${body}</tbody></table>
+      <div class="ptot"><span>Cargas <b>${rows.length}</b></span><span>Pallets <b>${pal.toLocaleString('pt-BR')}</b></span><span>Peso total <b>${kg.toLocaleString('pt-BR',{maximumFractionDigits:0})} kg</b></span></div></section>`;
+  }).join('');
+}
+$('#pGo').addEventListener('click',()=>{
+  const idx=[...document.querySelectorAll('#pList input[value]:checked')].map(c=>+c.value);
+  if(!idx.length) return;
+  try{ localStorage.setItem(PSEL_KEY,JSON.stringify(idx.map(i=>state.sections[i].title))); }catch(e){}
+  montarImpressao(idx); $('#dPrint').close();
+  document.body.classList.add('printing');
+  setTimeout(()=>window.print(),50);
+});
+window.addEventListener('afterprint',()=>{ document.body.classList.remove('printing'); $('#printArea').innerHTML=''; });
+$('#pClose').onclick=$('#pCancel').onclick=()=>$('#dPrint').close();
+$('#bPrint').addEventListener('click',abrirImpressao);
 
 /* ============ IMPORTAR (mesmo layout da Escala.xlsx) ============ */
 const cellTxt = c => { if(c.isMerged && c.master && c.master.address!==c.address) return ''; const v=c.value; if(v==null) return ''; if(v instanceof Date) return `${pad2(v.getUTCDate())}/${pad2(v.getUTCMonth()+1)}/${v.getUTCFullYear()}`; if(typeof v==='object'){ if(v.richText) return v.richText.map(x=>x.text).join(''); if('result' in v) return String(v.result??''); if(v.text) return String(v.text); } return String(v).trim(); };
