@@ -57,6 +57,24 @@ tr.sec .x{color:#bbb}
 .toast button{background:transparent;border:1px solid #fff;color:#fff;border-radius:6px;padding:4px 10px;font:600 12px Arial,sans-serif;cursor:pointer}
 .hint{font-size:12px;color:#555;margin:10px 2px 0}
 
+/* abas por data */
+.tabs{display:flex;gap:4px;align-items:flex-end;overflow-x:auto;padding:0 2px;scrollbar-width:thin}
+.tab{display:flex;align-items:center;flex:none;background:#D3D7E1;border:1px solid #BCC2D0;border-bottom:0;border-radius:8px 8px 0 0}
+.tab:hover{background:#DEE2EA}
+.tab button.tb{font:700 13px Arial,sans-serif;background:transparent;border:0;padding:9px 4px 9px 14px;min-height:40px;cursor:pointer;color:#2A2F3D;white-space:nowrap;display:flex;gap:6px;align-items:center}
+.tab button.tb span{font-weight:400;color:#5A6072}
+.tab button.tb i{font-style:normal;font-size:11px;background:#5A6480;color:#fff;border-radius:10px;padding:1px 7px;min-width:22px;text-align:center}
+.tab.on{background:#fff;border-color:#fff;box-shadow:inset 0 3px 0 var(--amber)}
+.tab.on button.tb{color:#000}.tab.on button.tb i{background:var(--navy2)}
+.tab .tx{border:0;background:transparent;color:#8A90A0;font-size:16px;line-height:1;cursor:pointer;padding:6px 8px;border-radius:4px;margin-right:4px;opacity:0}
+.tab:hover .tx,.tab.on .tx,.tab .tx:focus-visible{opacity:1}
+.tab .tx:hover{color:#C0392B;background:#FBE3E0}
+.tabs button:focus-visible{outline:2px solid var(--xl);outline-offset:-2px}
+.tadd{flex:none;font:600 12px Arial,sans-serif;border:1px dashed #8A90A0;background:transparent;color:#333;border-radius:8px 8px 0 0;padding:9px 12px;min-height:40px;cursor:pointer;margin-left:2px}
+.tadd:hover{border-color:var(--xl);color:var(--xl)}
+.oDias{display:flex;flex-direction:column;gap:0;max-height:180px;overflow:auto}
+.oDias small{color:#666;font-size:11.5px}
+
 /* ============ CARREGAR DADOS ============ */
 .bar button.load{background:#217346;border-color:#2E8B57}
 .bar button.load:hover{background:#1A5C38}
@@ -96,7 +114,7 @@ dialog.dd::backdrop{background:rgba(14,27,61,.55)}
 @media print{
   @page{size:A4 landscape;margin:8mm}
   html,body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .bar,.addrow,.act,.hint,.sum,.toast{display:none!important}
+  .bar,.addrow,.act,.hint,.sum,.toast,.tabs{display:none!important}
   col.actc{width:0!important}
   .date input::-webkit-calendar-picker-indicator{display:none}
   .sheet{margin:0;padding:0;max-width:none}
@@ -117,12 +135,13 @@ dialog.dd::backdrop{background:rgba(14,27,61,.55)}
   <button type="button" id="bImp">Importar Excel</button>
   <button type="button" id="bExp">Baixar Excel</button>
   <button type="button" id="bSec">+ Seção</button>
-  <button type="button" id="bNew">Nova escala</button>
+  <button type="button" id="bNew">Limpar aba</button>
   <button type="button" id="bPrint" class="pri">Imprimir</button>
   <input type="file" id="fImp" accept=".xlsx">
 </div>
 
 <div class="sheet">
+  <div class="tabs" id="tabs" role="tablist" aria-label="Escalas por data"></div>
   <div class="page">
     <div class="head">
       <div class="tt"><input id="title" aria-label="Título"></div>
@@ -163,9 +182,10 @@ dialog.dd::backdrop{background:rgba(14,27,61,.55)}
     </div>
     <div class="opts">
       <fieldset>
-        <legend>Cargas geradas no período</legend>
-        <label>de <input type="date" id="oDe"> até <input type="date" id="oAte"></label>
-        <label><input type="checkbox" id="oSemData" checked> Incluir cargas ainda não listadas (sem data)</label>
+        <legend id="oPerLeg">Cargas geradas no período</legend>
+        <label id="oPer">de <input type="date" id="oDe"> até <input type="date" id="oAte"></label>
+        <div class="oDias" id="oDias" hidden></div>
+        <label><input type="checkbox" id="oSemData" checked> <span id="oSemDataL">Incluir cargas ainda não listadas (sem data)</span></label>
         <label><input type="checkbox" id="oFat" checked> Ignorar cargas já faturadas</label>
       </fieldset>
       <fieldset>
@@ -174,8 +194,8 @@ dialog.dd::backdrop{background:rgba(14,27,61,.55)}
       </fieldset>
       <fieldset style="grid-column:1/-1">
         <legend>Como preencher</legend>
-        <label><input type="radio" name="oModo" value="upd" checked> Atualizar a escala atual (mantém QTD PALLET, MASTER e o que foi digitado; adiciona cargas novas)</label>
-        <label><input type="radio" name="oModo" value="new"> Substituir a escala inteira pelos dados carregados</label>
+        <label><input type="radio" name="oModo" value="upd" checked> Atualizar as abas (mantém QTD PALLET, MASTER e o que foi digitado; adiciona cargas novas)</label>
+        <label><input type="radio" name="oModo" value="new"> Substituir o conteúdo das abas das datas carregadas</label>
       </fieldset>
     </div>
     <div class="prev" id="prev" aria-live="polite">Carregue pelo menos um dos arquivos. Só com a planilha de docas, a escala atual tem as docas atualizadas pelo número da carga.</div>
@@ -191,34 +211,44 @@ const SEED = [{"title":"CARGAS DO PV 1","rows":[["23","PV3","Loja 23","Bebidas",
 
 const COLS = ['LOJA','PAV','LOJAS','TIPO DE CARGA','QTD PALLET','DOCA','PESO','OBSERVAÇÃO','MASTER','CARGAS INFORMADAS','STATUS'];
 const NC = COLS.length, GRAY = new Set([0,3]);   // LOJA e TIPO DE CARGA têm fundo cinza, como na planilha
-const LS_KEY = 'cd107_escala_pcp_v1';
+const LS_KEY = 'cd107_escala_pcp_v2', LS_OLD = 'cd107_escala_pcp_v1';
+const TITULO = 'Escala de Entrega - CD Nova Santa Rita';
+const DOW = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const fmtD = k => k ? `${k.slice(8,10)}/${k.slice(5,7)}/${k.slice(0,4)}` : '';
 const $ = s => document.querySelector(s);
 const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const pad2 = n => String(n).padStart(2,'0');
 const today = () => { const d=new Date(); return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; };
 const blank = () => new Array(NC).fill('');
 
-let state, undoSnap=null, saveT, toastT;
+let book, state, undoSnap=null, saveT, toastT;   // book = {active:'AAAA-MM-DD', escalas:{data:{title,date,sections}}}; state = aba ativa
 
-function defaults(){
-  return {title:'Escala de Entrega - CD Nova Santa Rita', date:today(),
+function novaEscala(date,title){
+  return {title:title||TITULO, date,
     sections:[{title:'CARGAS DO PV 1',rows:[blank(),blank(),blank()]},{title:'CARGAS PERECIVEIS',rows:[blank(),blank(),blank()]}]};
 }
 function load(){
-  try{ const s=JSON.parse(localStorage.getItem(LS_KEY)||'null'); if(s&&Array.isArray(s.sections)) return s; }catch(e){}
-  return {title:'Escala de Entrega - CD Nova Santa Rita', date:today(),
-    sections:SEED.map(s=>({title:s.title,rows:s.rows.length?s.rows.map(r=>r.slice(0,NC)):[blank(),blank(),blank()]}))};
+  try{
+    const b=JSON.parse(localStorage.getItem(LS_KEY)||'null');
+    if(b&&b.escalas&&Object.keys(b.escalas).length){ if(!b.escalas[b.active]) b.active=Object.keys(b.escalas).sort().pop(); return b; }
+  }catch(e){}
+  let s=null; try{ s=JSON.parse(localStorage.getItem(LS_OLD)||'null'); }catch(e){}   // migra a escala única da versão anterior
+  if(!(s&&Array.isArray(s.sections))) s={title:TITULO, date:today(),
+    sections:SEED.map(x=>({title:x.title,rows:x.rows.length?x.rows.map(r=>r.slice(0,NC)):[blank(),blank(),blank()]}))};
+  if(!s.date) s.date=today();
+  return {active:s.date, escalas:{[s.date]:s}};
 }
+function useTab(d){ book.active=d; state=book.escalas[d]; state.date=d; }
 function save(){
   clearTimeout(saveT);
-  saveT=setTimeout(()=>{ try{ localStorage.setItem(LS_KEY,JSON.stringify(state)); $('#saved').textContent='Salvo'; }catch(e){ $('#saved').textContent='Não salvo'; } },350);
+  saveT=setTimeout(()=>{ try{ localStorage.setItem(LS_KEY,JSON.stringify(book)); $('#saved').textContent='Salvo'; }catch(e){ $('#saved').textContent='Não salvo'; } },350);
   $('#saved').textContent='Salvando…';
 }
 function toast(msg,undo){
   $('#tMsg').textContent=msg; $('#tUndo').style.display=undo?'':'none'; $('#toast').style.display='flex';
   clearTimeout(toastT); toastT=setTimeout(()=>$('#toast').style.display='none',6000);
 }
-function snapshot(){ undoSnap=JSON.stringify(state); }
+function snapshot(){ undoSnap=JSON.stringify(book); }
 
 /* ============ PESO: "360.7 kg", "1,930 kg" (vírgula de milhar), "1.930,5 kg" ============ */
 function parsePeso(v){
@@ -244,14 +274,42 @@ function render(focus){
       + `<tr class="addrow"><td colspan="${NC+1}"><button type="button" data-add="${si}">+ Linha em ${esc(s.title)}</button></td></tr>`;
     t.appendChild(tb);
   });
-  summary();
+  renderTabs(); summary();
   if(focus) focusCell(...focus);
 }
+const nCargas = e => e.sections.reduce((a,s)=>a+s.rows.filter(r=>r.some(v=>String(v).trim())).length,0);
+function renderTabs(){
+  const ks=Object.keys(book.escalas).sort();
+  $('#tabs').innerHTML = ks.map(k=>{
+    const on=k===book.active, dw=DOW[new Date(k+'T12:00:00').getDay()];
+    return `<div class="tab${on?' on':''}"><button type="button" class="tb" role="tab" aria-selected="${on}" data-tab="${k}"><span>${dw}</span>${fmtD(k)}<i>${nCargas(book.escalas[k])}</i></button>`
+      + (ks.length>1?`<button type="button" class="tx" data-dtab="${k}" title="Excluir aba" aria-label="Excluir aba ${fmtD(k)}">×</button>`:'')+`</div>`;
+  }).join('') + `<button type="button" class="tadd" data-addtab title="Criar aba para outra data">+ Aba</button>`;
+  const on=$('#tabs .tab.on'); if(on) on.scrollIntoView({block:'nearest',inline:'nearest'});
+}
+$('#tabs').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  if(b.dataset.tab){ if(b.dataset.tab!==book.active){ useTab(b.dataset.tab); save(); render(); } }
+  else if(b.dataset.dtab){
+    const k=b.dataset.dtab, n=nCargas(book.escalas[k]);
+    if(n && !confirm(`Excluir a aba ${fmtD(k)} com ${n} linha(s)?`)) return;
+    snapshot(); delete book.escalas[k];
+    if(k===book.active){ const ks=Object.keys(book.escalas).sort(); useTab(ks.find(x=>x>k)||ks[ks.length-1]); }
+    save(); render(); toast(`Aba ${fmtD(k)} excluída.`,true);
+  }
+  else if(b.dataset.addtab!==undefined){
+    const d=new Date(book.active+'T12:00:00');
+    let k; do{ d.setDate(d.getDate()+1); k=`${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }while(book.escalas[k]);
+    book.escalas[k]=novaEscala(k,state.title); useTab(k); save(); render([0,0,0]);
+    toast(`Aba ${fmtD(k)} criada. Troque a data no campo amarelo se precisar.`);
+  }
+});
 function summary(){
   let n=0,pal=0,kg=0; const pav={};
   state.sections.forEach(s=>s.rows.forEach(r=>{ if(!r.some(v=>String(v).trim())) return; n++; pal+=num(r[4]); kg+=parsePeso(r[6]); if(r[1]) pav[r[1]]=(pav[r[1]]||0)+1; }));
   $('#sum').innerHTML=`<span>Cargas <b>${n.toLocaleString('pt-BR')}</b></span><span>Pallets <b>${pal.toLocaleString('pt-BR')}</b></span><span>Peso total <b>${kg.toLocaleString('pt-BR',{maximumFractionDigits:0})} kg</b></span>`
     + Object.keys(pav).sort().map(k=>`<span>${esc(k)} <b>${pav[k]}</b></span>`).join('');
+  const bd=document.querySelector('#tabs .tab.on i'); if(bd) bd.textContent=n;
 }
 function focusCell(si,ri,c){
   const el=document.querySelector(`input[data-s="${si}"][data-i="${ri}"][data-c="${c}"]`);
@@ -312,10 +370,14 @@ tbl.addEventListener('paste',e=>{
 });
 
 $('#title').addEventListener('input',e=>{ state.title=e.target.value; save(); });
-$('#date').addEventListener('input',e=>{ state.date=e.target.value; save(); });
-$('#tUndo').addEventListener('click',()=>{ if(!undoSnap) return; state=JSON.parse(undoSnap); undoSnap=null; save(); render(); $('#toast').style.display='none'; });
+$('#date').addEventListener('change',e=>{   // trocar a data renomeia a aba
+  const nd=e.target.value, od=book.active; if(!nd||nd===od) return;
+  if(book.escalas[nd]){ if(confirm(`Já existe uma aba para ${fmtD(nd)}. Abrir essa aba?`)){ useTab(nd); save(); } render(); return; }
+  book.escalas[nd]=state; delete book.escalas[od]; useTab(nd); save(); render();
+});
+$('#tUndo').addEventListener('click',()=>{ if(!undoSnap) return; book=JSON.parse(undoSnap); undoSnap=null; useTab(book.escalas[book.active]?book.active:Object.keys(book.escalas).sort().pop()); save(); render(); $('#toast').style.display='none'; });
 $('#bSec').addEventListener('click',()=>{ const t=prompt('Nome da seção','CARGAS DO PV 2'); if(!t) return; state.sections.push({title:t.toUpperCase(),rows:[blank()]}); save(); render([state.sections.length-1,0,0]); });
-$('#bNew').addEventListener('click',()=>{ if(!confirm('Começar uma escala em branco? A atual será substituída (baixe o Excel antes, se quiser guardar).')) return; snapshot(); state=defaults(); save(); render([0,0,0]); toast('Escala nova criada.',true); });
+$('#bNew').addEventListener('click',()=>{ if(!confirm(`Limpar a aba ${fmtD(book.active)}? As outras abas não mudam.`)) return; snapshot(); book.escalas[book.active]=novaEscala(book.active,state.title); useTab(book.active); save(); render([0,0,0]); toast('Aba limpa.',true); });
 $('#bPrint').addEventListener('click',()=>window.print());
 
 /* ============ IMPORTAR (mesmo layout da Escala.xlsx) ============ */
@@ -348,8 +410,9 @@ $('#fImp').addEventListener('change',async e=>{
     }
     if(!secs.length) throw new Error('nenhuma linha de carga encontrada');
     secs.forEach(s=>{ if(!s.rows.length) s.rows.push(blank()); });
-    snapshot(); state={title,date:date||state.date||today(),sections:secs}; save(); render();
-    toast(`Importado: ${secs.reduce((a,s)=>a+s.rows.filter(r=>r.some(Boolean)).length,0)} cargas em ${secs.length} seção(ões).`,true);
+    snapshot(); const d=date||state.date||today(), had=!!book.escalas[d];
+    book.escalas[d]={title,date:d,sections:secs}; useTab(d); save(); render();
+    toast(`Importado na aba ${fmtD(d)}${had?' (substituída)':''}: ${secs.reduce((a,s)=>a+s.rows.filter(r=>r.some(Boolean)).length,0)} cargas em ${secs.length} seção(ões).`,true);
   }catch(err){ alert('Não consegui importar: '+err.message); }
 });
 
@@ -390,7 +453,7 @@ $('#bExp').addEventListener('click',async()=>{
   a.download=`Escala_${d}-${m}-${y}.xlsx`; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000);
 });
 
-state=load(); render();
+book=load(); useTab(book.active); render();
 </script>
 <script>
 /* =====================================================================
@@ -467,7 +530,8 @@ state=load(); render();
       desc:pick(c,'desccarga','descricaocarga'), peso:pick(c,'pesobruto','peso'),
       vol:pick(c,'quantidade','qtdvolumes','volume'), cub:pick(c,'cubagem'),
       pav:pick(c,'pavilao','pavilhao'), sub:pick(c,'subdivisao'), box:pick(c,'nrobox','box'),
-      stc:pick(c,'statuscarga'), dt:pick(c,'dtahorgeracaocarga','dtageracaocarga'), sorter:pick(c,'sorter')
+      stc:pick(c,'statuscarga'), dt:pick(c,'dtahorgeracaocarga','dtageracaocarga'), sorter:pick(c,'sorter'),
+      inc:pick(c,'dtainclusaopedido','datainclusaopedido','dtainclusao','datainclusao')
     };
     const falta=['loja','carga','peso'].filter(k=>I[k]<0);
     if(falta.length) throw new Error('colunas não encontradas: '+falta.join(', ')+' (esperado: Nroempdestino, Nrocarga, Peso Bruto)');
@@ -476,7 +540,7 @@ state=load(); render();
       const carga=toInt(r[I.carga]); if(!carga){ semCarga++; return; }
       const loja=toInt(r[I.loja]); const k=carga+'|'+loja;
       let o=g.get(k);
-      if(!o){ o={carga,loja,peso:0,vol:0,cub:0,pav:{},sub:{},desc:'',box:'',stc:'',dia:'',sorter:''}; g.set(k,o); }
+      if(!o){ o={carga,loja,peso:0,vol:0,cub:0,pav:{},sub:{},inc:{},desc:'',box:'',stc:'',dia:'',sorter:''}; g.set(k,o); }
       const p=toNum(r[I.peso])||0;
       o.peso+=p; if(I.vol>=0) o.vol+=toNum(r[I.vol])||0; if(I.cub>=0) o.cub+=toNum(r[I.cub])||0;
       const pv=I.pav>=0?String(r[I.pav]||''):''; if(pv) o.pav[pv]=(o.pav[pv]||0)+p+1e-6;
@@ -486,8 +550,11 @@ state=load(); render();
       if(!o.stc && I.stc>=0 && r[I.stc]) o.stc=String(r[I.stc]);
       if(!o.dia && I.dt>=0) o.dia=toDay(r[I.dt]);
       if(I.sorter>=0 && /sim/i.test(r[I.sorter])) o.sorter='SIM';
+      const di=I.inc>=0?toDay(r[I.inc]):''; if(di) o.inc[di]=(o.inc[di]||0)+p+1e-6;
     });
-    return {itens:[...g.values()], linhas:t.rows.length, semCarga, cargas:new Set([...g.values()].map(o=>o.carga)).size};
+    // carga × loja com pedidos de mais de um dia vai para a data de maior peso
+    let mistas=0; g.forEach(o=>{ o.diaInc=top(o.inc); if(Object.keys(o.inc).length>1) mistas++; });
+    return {itens:[...g.values()], linhas:t.rows.length, semCarga, cargas:new Set([...g.values()].map(o=>o.carga)).size, temInc:I.inc>=0, mistas};
   }
 
   /* ---------- 2) Cargas expedição: docas ---------- */
@@ -524,16 +591,19 @@ state=load(); render();
         doca: c.box || o.box || '',
         peso:o.peso, vol:o.vol,
         status: c.status || (/n[aã]o listad/i.test(o.stc) ? 'NÃO LISTADA' : ''),
-        dia: o.dia || c.dia || ''
+        dia: o.dia || c.dia || '',
+        diaInc: o.diaInc || ''
       };
     });
   }
   function filtrar(lista){
     const de=$('#oDe').value, ate=$('#oAte').value, semData=$('#oSemData').checked, fat=$('#oFat').checked;
     const tipos=new Set([...document.querySelectorAll('#oTipos input:checked')].map(i=>i.value));
+    const porInc=D.dem&&D.dem.temInc, dias=new Set([...document.querySelectorAll('#oDias input:checked')].map(i=>i.value));
     return lista.filter(x=>{
       if(fat && /^FATURAD/i.test(x.status)) return false;
       if(!tipos.has(x.obs||'(sem tipo)')) return false;
+      if(porInc) return x.diaInc ? dias.has(x.diaInc) : semData;
       if(!x.dia) return semData;
       if(de && x.dia<de) return false;
       if(ate && x.dia>ate) return false;
@@ -573,7 +643,7 @@ state=load(); render();
         if(tipo==='dem'){
           D.dem=lerDemanda(t);
           st.textContent=`${file.name} · ${D.dem.linhas.toLocaleString('pt-BR')} linhas · ${D.dem.cargas.toLocaleString('pt-BR')} cargas`;
-          montarTipos();
+          montarTipos(); montarDias();
         } else {
           D.car=lerCargas(t);
           st.textContent=`${file.name} · ${D.car.map.size.toLocaleString('pt-BR')} cargas · ${D.car.comDoca.toLocaleString('pt-BR')} com doca`;
@@ -596,6 +666,19 @@ state=load(); render();
     const ks=Object.keys(cont).sort((a,b)=>{ const ia=OBS_ORD.indexOf(a), ib=OBS_ORD.indexOf(b); return (ia<0?99:ia)-(ib<0?99:ib)||a.localeCompare(b); });
     $('#oTipos').innerHTML=ks.map(k=>`<label><input type="checkbox" value="${esc(k)}" checked> ${esc(k)}</label>`).join('');
   }
+  function montarDias(){
+    const porInc=D.dem&&D.dem.temInc;
+    $('#oPer').hidden=porInc; $('#oDias').hidden=!porInc;
+    $('#oPerLeg').textContent=porInc?'Abas por data de inclusão do pedido':'Cargas geradas no período';
+    $('#oSemDataL').textContent=porInc?'Incluir cargas sem data de inclusão (vão para a aba aberta)':'Incluir cargas ainda não listadas (sem data)';
+    if(!porInc){ $('#oDias').innerHTML=''; return; }
+    const cont={}; montar().forEach(x=>{ if(x.diaInc) cont[x.diaInc]=(cont[x.diaInc]||0)+1; });
+    const ks=Object.keys(cont).sort();
+    $('#oDias').innerHTML = ks.length
+      ? ks.map(k=>`<label><input type="checkbox" value="${k}" checked> ${DOW[new Date(k+'T12:00:00').getDay()]} ${fmtD(k)} · ${cont[k]} linha(s) <small>${book.escalas[k]?'aba existente':'aba nova'}</small></label>`).join('')
+      : '<label style="color:#666">Coluna Dtainclusaopedido vazia</label>';
+  }
+  $('#oDias').addEventListener('change',atualizarPrev);
   ['#oDe','#oAte','#oSemData','#oFat'].forEach(id=>$(id).addEventListener('change',atualizarPrev));
   $('#oTipos').addEventListener('change',atualizarPrev);
   document.querySelectorAll('input[name=oModo]').forEach(i=>i.addEventListener('change',atualizarPrev));
@@ -604,10 +687,10 @@ state=load(); render();
     const go=$('#dGo'), pv=$('#prev');
     if(!D.dem && !D.car){ go.disabled=true; pv.innerHTML='Carregue pelo menos um dos arquivos. Só com a planilha de docas, a escala atual tem as docas atualizadas pelo número da carga.'; return; }
     if(!D.dem){
-      const n=existentes().filter(e=>D.car.map.has(e.carga)).length;
+      let n=0; linhasTodas(r=>{ if(D.car.map.has(toInt(r[9]))) n++; });
       go.disabled=!n; go.textContent='Atualizar docas';
-      pv.innerHTML = n ? `Só a planilha de docas: <b>${n}</b> linha(s) da escala atual têm a carga nela e vão receber <b>DOCA</b> e <b>STATUS</b>.`
-                       : `<span class="w">Nenhuma carga da escala atual aparece na planilha de docas.</span> Carregue também o Metabase para montar a escala.`;
+      pv.innerHTML = n ? `Só a planilha de docas: <b>${n}</b> linha(s) das abas têm a carga nela e vão receber <b>DOCA</b> e <b>STATUS</b>.`
+                       : `<span class="w">Nenhuma carga das abas aparece na planilha de docas.</span> Carregue também o Metabase para montar a escala.`;
       return;
     }
     go.textContent='Preencher escala';
@@ -622,9 +705,13 @@ state=load(); render();
         + Object.keys(porPav).sort().map(k=>`${esc(k)}: <b>${porPav[k]}</b>`).join(' · ')
         + `<br>Com doca: <b>${comDoca}</b> · Sem doca: <b>${lista.length-comDoca}</b>`
         + (D.car?'':' <span class="w">(carregue a planilha de docas para preencher a coluna DOCA)</span>')
-        + (modo==='new'?'<br><span class="w">A escala atual será substituída (dá para desfazer).</span>':'')
+        + (D.dem.temInc ? '<br>Abas: ' + abasDe(lista).map(([k,n])=>`${k?fmtD(k):fmtD(book.active)+' (sem data)'} <b>${n}</b>${k&&!book.escalas[k]?' <span class="w">nova</span>':''}`).join(' · ')
+            + (D.dem.mistas?`<br><span class="w">${D.dem.mistas} carga(s) × loja têm pedidos de mais de um dia: ficam na aba da data com maior peso.</span>`:'') : '')
+        + (modo==='new'?'<br><span class="w">O conteúdo das abas dessas datas será substituído (dá para desfazer).</span>':'')
       : '<span class="w">Nenhuma carga com esses filtros.</span> Ajuste o período ou os tipos.';
   }
+  function linhasTodas(fn){ Object.values(book.escalas).forEach(e=>e.sections.forEach(s=>s.rows.forEach(fn))); }
+  function abasDe(lista){ const m={}; lista.forEach(x=>{ const k=x.diaInc||''; m[k]=(m[k]||0)+1; }); return Object.keys(m).sort().map(k=>[k,m[k]]); }
   function existentes(){
     const out=[]; state.sections.forEach((s,si)=>s.rows.forEach((r,ri)=>{ const c=toInt(r[9]); if(c) out.push({si,ri,carga:c,loja:toInt(r[0])}); }));
     return out;
@@ -643,22 +730,13 @@ state=load(); render();
   }
   const vazia = r => !r.some(v=>String(v??'').trim());
 
-  $('#dGo').addEventListener('click',()=>{
-    snapshot();
-    if(!D.dem){                                     // só docas
-      let n=0;
-      existentes().forEach(e=>{ const c=D.car.map.get(e.carga); if(!c) return; const r=state.sections[e.si].rows[e.ri];
-        if(c.box) r[5]=c.box; if(c.status) r[10]=c.status; n++; });
-      save(); render(); dlg.close(); toast(`Docas atualizadas em ${n} linha(s).`,true); return;
-    }
-    const lista=filtrar(montar()).sort(ordenar);
-    const modo=document.querySelector('input[name=oModo]:checked').value;
+  /* aplica a lista na aba ativa (state) */
+  function aplicar(lista, modo){
     if(modo==='new'){
       const secs=[];
       PAV_ORD.forEach(p=>{ const g=lista.filter(x=>x.pav===p); if(g.length) secs.push({title:PAV_SEC[p],rows:g.map(paraLinha)}); });
       state.sections=secs.length?secs:[{title:PAV_SEC.PV1,rows:[blank()]}];
-      save(); render(); dlg.close();
-      toast(`Escala montada: ${lista.length} linhas em ${secs.length} seção(ões).`,true); return;
+      return {upd:0, add:lista.length};
     }
     // atualizar: casa por CARGA + LOJA
     const idx=new Map(); existentes().forEach(e=>idx.set(e.carga+'|'+e.loja,e));
@@ -677,8 +755,33 @@ state=load(); render();
       while(rows.length && vazia(rows[rows.length-1])) rows.pop();
       rows.push(...novos[p]); });
     state.sections.forEach(s=>{ if(!s.rows.length) s.rows.push(blank()); });
+    return {upd, add};
+  }
+
+  $('#dGo').addEventListener('click',()=>{
+    snapshot();
+    if(!D.dem){                                     // só docas: atualiza todas as abas
+      let n=0;
+      linhasTodas(r=>{ const c=D.car.map.get(toInt(r[9])); if(!c) return; if(c.box) r[5]=c.box; if(c.status) r[10]=c.status; n++; });
+      save(); render(); dlg.close(); toast(`Docas atualizadas em ${n} linha(s).`,true); return;
+    }
+    const lista=filtrar(montar()).sort(ordenar);
+    const modo=document.querySelector('input[name=oModo]:checked').value;
+    if(!D.dem.temInc){                              // arquivo sem Dtainclusaopedido: vai tudo para a aba aberta
+      const r=aplicar(lista,modo); save(); render(); dlg.close();
+      toast(modo==='new'?`Aba ${fmtD(book.active)} montada: ${lista.length} linhas.`:`${r.upd} linha(s) atualizada(s) e ${r.add} carga(s) nova(s) adicionada(s).`,true); return;
+    }
+    // uma aba por data de inclusão do pedido
+    const aberta=book.active, titulo=state.title, grupos=new Map();
+    lista.forEach(x=>{ const k=x.diaInc||aberta; if(!grupos.has(k)) grupos.set(k,[]); grupos.get(k).push(x); });
+    const ks=[...grupos.keys()].sort(); let upd=0, add=0, criadas=0;
+    ks.forEach(k=>{
+      if(!book.escalas[k]){ book.escalas[k]={title:titulo,date:k,sections:[]}; criadas++; }
+      useTab(k); const r=aplicar(grupos.get(k),modo); upd+=r.upd; add+=r.add;
+    });
+    useTab(grupos.has(aberta)?aberta:ks[ks.length-1]);
     save(); render(); dlg.close();
-    toast(`${upd} linha(s) atualizada(s) e ${add} carga(s) nova(s) adicionada(s).`,true);
+    toast(`${ks.length} aba(s) preenchida(s)${criadas?` (${criadas} nova(s))`:''}: ${add} carga(s) adicionada(s)${upd?`, ${upd} atualizada(s)`:''}.`,true);
   });
 })();
 </script>
