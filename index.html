@@ -31,6 +31,21 @@ input[type=file]{display:none}
 .sum .k.ok b{color:#217346}
 .sum .sep{width:1px;background:#E1E4EC;margin:2px 4px}
 .sum .k.pv{min-width:64px}
+/* botão discreto do relatório de pendências */
+.sum .rel{margin-left:auto;align-self:center;font:600 12px Arial,sans-serif;color:#5A6072;background:transparent;border:1px dashed #B7BDCC;border-radius:6px;padding:7px 10px;cursor:pointer;min-height:34px}
+.sum .rel:hover{color:#0E1B3D;border-color:#0E1B3D;background:#F4F6FA}
+.sum .rel:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+/* diálogo do relatório */
+.rDias{display:flex;flex-wrap:wrap;gap:6px}
+.rDias label{display:flex;align-items:center;gap:6px;font-size:12.5px;border:1px solid #D0D4DE;border-radius:16px;padding:5px 10px;cursor:pointer;background:#fff;min-height:32px}
+.rDias label.on{border-color:#D0021B;background:#FDECEE;color:#8A0012}
+.rDias input{width:15px;height:15px;accent-color:#D0021B}
+.rTabs{display:flex;gap:4px}
+.rTabs button{font:700 12px Arial,sans-serif;border:1px solid #D0D4DE;background:#fff;border-radius:6px;padding:6px 12px;cursor:pointer;min-height:32px}
+.rTabs button.on{background:var(--navy);border-color:var(--navy);color:#fff}
+#rTxt{margin:0;background:#E7F3EE;border-radius:8px;padding:12px 14px;font:13px/1.5 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;max-height:46vh;overflow:auto;color:#111}
+#rImgBox{max-height:46vh;overflow:auto;background:#EEF1F8;border-radius:8px;padding:8px;text-align:center}
+#rImgBox canvas{max-width:100%;height:auto;box-shadow:0 1px 4px rgba(0,0,0,.2)}
 /* célula DOCA vazia numa carga preenchida = pendente de listagem */
 .esc td.nodoca{background:#FDECEE}
 .esc td.nodoca input{box-shadow:inset 0 0 0 2px #F3A6AF}
@@ -527,7 +542,8 @@ function summary(){
     + `<span class="k">Pallets <b>${f(pal)}</b>${palEst?`<i>~${f(palEst)} estimados</i>`:''}</span>`
     + `<span class="k">Peso total <b>${kg.toLocaleString('pt-BR',{maximumFractionDigits:0})} kg</b></span>`
     + (Object.keys(pav).length?'<span class="sep"></span>':'')
-    + Object.keys(pav).sort().map(k=>`<span class="k pv">${esc(k)} <b>${pav[k]}</b></span>`).join('');
+    + Object.keys(pav).sort().map(k=>`<span class="k pv">${esc(k)} <b>${pav[k]}</b></span>`).join('')
+    + `<button type="button" class="rel" id="bRel" title="Relatório do que falta listar, por data de inclusão do pedido">Relatório de pendências</button>`;
   const bd=document.querySelector('#tabs .tab.on i'); if(bd) bd.textContent=n;
   marcaSemDoca(document.querySelector('#tabs .tab.on'),semDoca);
 }
@@ -1155,6 +1171,170 @@ book=load(); useTab(book.active); render();
     useTab(grupos.has(aberta)?aberta:ks[ks.length-1]);
     save(); render(); dlg.close();
     toast(`${ks.length} aba(s) preenchida(s)${criadas?` (${criadas} nova(s))`:''}: ${add} carga(s) adicionada(s)${upd?`, ${upd} atualizada(s)`:''}.`,true);
+  });
+})();
+</script>
+<dialog class="dd" id="dRel" aria-labelledby="dRelT" style="width:min(720px,calc(100% - 24px))">
+  <div class="dd-h"><div><h2 id="dRelT">Pendências de listagem</h2><p>Cargas sem doca de todas as abas, por data de inclusão do pedido</p></div><button type="button" class="xc" id="rClose" aria-label="Fechar">×</button></div>
+  <div class="dd-b">
+    <div class="rDias" id="rDias"></div>
+    <div class="rTabs"><button type="button" data-v="txt" class="on">Texto</button><button type="button" data-v="img">Imagem</button></div>
+    <pre id="rTxt"></pre>
+    <div id="rImgBox" hidden></div>
+  </div>
+  <div class="dd-f"><button type="button" id="rBaixar" style="margin-right:auto">Baixar imagem</button><button type="button" id="rCopImg">Copiar imagem</button><button type="button" class="go" id="rCopTxt">Copiar texto</button></div>
+</dialog>
+<script>
+/* =====================================================================
+   RELATÓRIO DE PENDÊNCIAS (sem doca) · por DTAINCLUSAOPEDIDO (= abas) · por CD
+   Texto para WhatsApp + imagem gerada em canvas (sem bibliotecas)
+   ===================================================================== */
+(function(){
+  const fN = v => v.toLocaleString('pt-BR',{maximumFractionDigits:0});
+  const agora = () => { const d=new Date(); return `${pad2(d.getDate())}/${pad2(d.getMonth()+1)}/${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
+  const dowU = k => DOW[new Date(k+'T12:00:00').getDay()].toUpperCase();
+  const cdOrdR = t => { const m=/^CD\s*(\d+)/i.exec(t||''); return m?+m[1]:99; };
+  const conta = (arr,f) => { const o={}; arr.forEach(r=>{ const k=String(f(r)||'').trim(); if(k) o[k]=(o[k]||0)+1; }); return Object.entries(o).sort((a,b)=>b[1]-a[1]); };
+  const tot = rows => {
+    let pal=0, est=false, kg=0; const lojas=new Set();
+    rows.forEach(r=>{ pal+=num(r[C.PAL]); if(isEst(r[C.PAL])) est=true; kg+=parsePeso(r[C.PESO]); if(String(r[C.LOJA]).trim()) lojas.add(String(r[C.LOJA]).trim()); });
+    return {n:rows.length, pal, est, kg, lojas:lojas.size};
+  };
+  let sel=null, vista='txt';
+
+  /* dados: só linhas preenchidas sem DOCA, de todas as abas */
+  function coletar(){
+    return Object.keys(book.escalas).sort().map(k=>{
+      const e=book.escalas[k], cds=[];
+      e.sections.forEach(s=>{ const rows=s.rows.filter(semDocaRow); if(rows.length) cds.push({cd:s.title, rows, t:tot(rows)}); });
+      cds.sort((a,b)=>cdOrdR(a.cd)-cdOrdR(b.cd));
+      return {k, cds, t:tot(cds.flatMap(c=>c.rows))};
+    }).filter(d=>d.t.n);
+  }
+  const escolhidos = dados => dados.filter(d=>!sel || sel.has(d.k));
+  const palTxt = t => `${t.est?'~':''}${fN(t.pal)} pallet${t.pal===1?'':'s'}`;
+
+  function texto(dados){
+    const L=[], T=tot(dados.flatMap(d=>d.cds.flatMap(c=>c.rows)));
+    L.push('📋 *PENDÊNCIAS DE LISTAGEM · CD-107*');
+    L.push(`_${agora()} · cargas sem doca_`);
+    L.push('');
+    if(!dados.length){ L.push('✅ Nenhuma carga pendente de listagem.'); return L.join('\n'); }
+    L.push(`🔴 *TOTAL: ${fN(T.n)} carga${T.n===1?'':'s'}* · ${palTxt(T)} · ${fN(T.kg)} kg`);
+    // resumo por CD (todas as datas)
+    const porCd={}; dados.forEach(d=>d.cds.forEach(c=>{ (porCd[c.cd]=porCd[c.cd]||[]).push(...c.rows); }));
+    Object.keys(porCd).sort((a,b)=>cdOrdR(a)-cdOrdR(b)).forEach(cd=>{ const t=tot(porCd[cd]); L.push(`   • ${cd}: *${t.n}*`); });
+    dados.forEach(d=>{
+      L.push('');
+      L.push(`📅 *${dowU(d.k)} ${fmtD(d.k)}* · ${d.t.n} carga${d.t.n===1?'':'s'} por listar`);
+      d.cds.forEach(c=>{
+        L.push(`▪️ *${c.cd}*: ${c.t.n} carga${c.t.n===1?'':'s'} · ${palTxt(c.t)} · ${fN(c.t.kg)} kg · ${c.t.lojas} loja${c.t.lojas===1?'':'s'}`);
+        const sep=conta(c.rows,r=>r[C.OBS]), comp=conta(c.rows,r=>r[C.OBS2]);
+        if(sep.length) L.push(`      ↳ ${sep.map(([k,v])=>`${k} ${v}`).join(' · ')}`);
+        if(comp.length) L.push(`      ↳ ${comp.map(([k,v])=>`${k} ${v}`).join(' · ')}`);
+      });
+    });
+    return L.join('\n');
+  }
+
+  /* ---------- imagem (canvas nativo, paleta navy/amber) ---------- */
+  function imagem(dados){
+    const W=900, P=28, RH=46, HH=30, DH=46, GAP=18, S=2;
+    const T=tot(dados.flatMap(d=>d.cds.flatMap(c=>c.rows)));
+    let H=112+96+P;
+    dados.forEach(d=>{ H+=DH+HH+d.cds.length*RH+GAP; });
+    if(!dados.length) H+=60;
+    H+=36;
+    const cv=document.createElement('canvas'); cv.width=W*S; cv.height=H*S;
+    const g=cv.getContext('2d'); g.scale(S,S);
+    const font=(w,sz)=>`${w} ${sz}px Arial, Helvetica, sans-serif`;
+    const txt=(t,x,y,f,c,al='left')=>{ g.font=f; g.fillStyle=c; g.textAlign=al; g.textBaseline='middle'; g.fillText(t,x,y); };
+    const rr=(x,y,w,h,r,c)=>{ g.beginPath(); g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r); g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath(); g.fillStyle=c; g.fill(); };
+    const fit=(t,f,max)=>{ g.font=f; if(g.measureText(t).width<=max) return t; while(t.length>1 && g.measureText(t+'…').width>max) t=t.slice(0,-1); return t+'…'; };
+    // fundo com grade de pontos
+    g.fillStyle='#EEF1F8'; g.fillRect(0,0,W,H);
+    g.fillStyle='#D5DAE6'; for(let x=10;x<W;x+=18) for(let y=120;y<H;y+=18){ g.fillRect(x,y,1.4,1.4); }
+    // topo
+    g.fillStyle='#0E1B3D'; g.fillRect(0,0,W,96); g.fillStyle='#E48B00'; g.fillRect(0,96,W,4);
+    txt('PENDÊNCIAS DE LISTAGEM',P,36,font('bold',26),'#fff');
+    txt('CD-107 Nova Santa Rita · cargas sem doca, por data de inclusão do pedido',P,68,font('normal',14),'#AEB9DA');
+    txt(agora(),W-P,36,font('bold',15),'#E48B00','right');
+    let y=112;
+    // KPIs
+    const kp=[['SEM DOCA',fN(T.n),'#D0021B','#FDECEE'],['PALLETS',(T.est?'~':'')+fN(T.pal),'#0E1B3D','#fff'],['PESO',fN(T.kg)+' kg','#0E1B3D','#fff'],['DATAS',String(dados.length),'#0E1B3D','#fff']];
+    const kw=(W-2*P-3*12)/4;
+    kp.forEach(([l,v,c,bg],i)=>{ const x=P+i*(kw+12); rr(x,y,kw,76,10,i?'#C9CFDD':'#D0021B'); rr(x+1.5,y+1.5,kw-3,73,9,bg);
+      txt(l,x+16,y+22,font('bold',11),i?'#5A6072':'#D0021B'); txt(v,x+16,y+52,font('bold',26),c); });
+    y+=96;
+    if(!dados.length){ txt('✓ Nenhuma carga pendente de listagem',W/2,y+24,font('bold',18),'#217346','center'); y+=60; }
+    // colunas da tabela
+    const cols=[['CD',P+14,'left'],['CARGAS',P+300,'right'],['PALLETS',P+390,'right'],['PESO',P+510,'right'],['COMPOSIÇÃO',P+540,'left']];
+    dados.forEach(d=>{
+      rr(P,y,W-2*P,DH+HH+d.cds.length*RH,10,'#fff');
+      g.save(); g.beginPath(); g.rect(P,y,W-2*P,DH); g.clip(); rr(P,y,W-2*P,DH+12,10,'#16265A'); g.restore();
+      txt(`${dowU(d.k)}  ${fmtD(d.k)}`,P+14,y+DH/2,font('bold',19),'#fff');
+      const lb=`${d.t.n} carga${d.t.n===1?'':'s'} por listar`; g.font=font('bold',14); const bw=g.measureText(lb).width+24;
+      rr(W-P-14-bw,y+10,bw,DH-20,13,'#D0021B'); txt(lb,W-P-14-bw/2,y+DH/2,font('bold',14),'#fff','center');
+      y+=DH;
+      g.fillStyle='#EEF1F8'; g.fillRect(P,y,W-2*P,HH);
+      cols.forEach(([t,x,al])=>txt(t,x,y+HH/2,font('bold',11),'#5A6072',al));
+      y+=HH;
+      d.cds.forEach((c,i)=>{
+        if(i){ g.fillStyle='#E6E9F0'; g.fillRect(P+10,y,W-2*P-20,1); }
+        g.fillStyle='#E48B00'; g.fillRect(P,y+10,4,RH-20);
+        txt(fit(c.cd,font('bold',15),260),P+14,y+RH/2,font('bold',15),'#0E1B3D');
+        txt(fN(c.t.n),P+300,y+RH/2,font('bold',20),'#D0021B','right');
+        txt((c.t.est?'~':'')+fN(c.t.pal),P+390,y+RH/2,font(c.t.est?'italic bold':'bold',15),'#16265A','right');
+        txt(fN(c.t.kg)+' kg',P+510,y+RH/2,font('bold',14),'#16265A','right');
+        const comp=conta(c.rows,r=>r[C.OBS2]), sep=conta(c.rows,r=>r[C.OBS]);
+        const l1=(comp.length?comp:sep).map(([k,v])=>`${k} ${v}`).join(' · '), l2=comp.length&&sep.length?sep.map(([k,v])=>`${k} ${v}`).join(' · '):'';
+        txt(fit(l1,font('bold',12.5),W-P-14-(P+540)),P+540,y+(l2?RH/2-8:RH/2),font('bold',12.5),'#2A2F3D');
+        if(l2) txt(fit(l2,font('normal',11.5),W-P-14-(P+540)),P+540,y+RH/2+9,font('normal',11.5),'#6A7085');
+        y+=RH;
+      });
+      y+=GAP;
+    });
+    txt('Escala de Entrega · PCP · Inteligência Logística Noturna',W/2,H-18,font('normal',11.5),'#8A90A0','center');
+    return cv;
+  }
+
+  function atualizar(){
+    const dados=coletar();
+    if(!sel) sel=new Set(dados.map(d=>d.k));
+    $('#rDias').innerHTML = dados.length
+      ? dados.map(d=>`<label class="${sel.has(d.k)?'on':''}"><input type="checkbox" value="${d.k}" ${sel.has(d.k)?'checked':''}> ${DOW[new Date(d.k+'T12:00:00').getDay()]} ${fmtD(d.k)} <b>${d.t.n}</b></label>`).join('')
+      : '<span style="color:#217346;font-weight:700">Nenhuma carga sem doca nas abas.</span>';
+    const esc2=escolhidos(dados);
+    $('#rTxt').textContent=texto(esc2);
+    if(vista==='img'){ const b=$('#rImgBox'); b.innerHTML=''; b.appendChild(imagem(esc2)); }
+  }
+  function abrirRel(){ sel=null; atualizar(); $('#dRel').showModal(); }
+  $('#sum').addEventListener('click',e=>{ if(e.target.closest('#bRel')) abrirRel(); });
+  $('#rClose').onclick=()=>$('#dRel').close();
+  $('#rDias').addEventListener('change',e=>{ const i=e.target; if(!i.value) return; i.checked?sel.add(i.value):sel.delete(i.value); atualizar(); });
+  document.querySelector('#dRel .rTabs').addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b) return; vista=b.dataset.v;
+    document.querySelectorAll('#dRel .rTabs button').forEach(x=>x.classList.toggle('on',x===b));
+    $('#rTxt').hidden=vista!=='txt'; $('#rImgBox').hidden=vista!=='img'; atualizar();
+  });
+  $('#rCopTxt').addEventListener('click',async()=>{
+    const t=$('#rTxt').textContent;
+    try{ await navigator.clipboard.writeText(t); }
+    catch(e){ const a=document.createElement('textarea'); a.value=t; document.body.appendChild(a); a.select(); document.execCommand('copy'); a.remove(); }
+    toast('Texto copiado. É só colar no WhatsApp.');
+  });
+  const blobAtual = () => new Promise(res=>imagem(escolhidos(coletar())).toBlob(res,'image/png'));
+  async function baixar(){
+    const b=await blobAtual(), a=document.createElement('a'); a.href=URL.createObjectURL(b);
+    a.download=`Pendencias_listagem_${agora().replace(/[\/: ]/g,'-')}.png`; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  }
+  $('#rBaixar').addEventListener('click',baixar);
+  $('#rCopImg').addEventListener('click',async()=>{
+    try{
+      if(!window.ClipboardItem) throw new Error('sem suporte');
+      await navigator.clipboard.write([new ClipboardItem({'image/png':blobAtual()})]);
+      toast('Imagem copiada. É só colar no WhatsApp.');
+    }catch(e){ await baixar(); toast('Este navegador não copia imagem: baixei o PNG.'); }
   });
 })();
 </script>
