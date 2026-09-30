@@ -38,6 +38,7 @@ table.esc{border-collapse:collapse;width:100%;min-width:1080px;font:700 14px Ari
 .esc tr.sec td{background:var(--dk);color:#fff;height:58px}
 .esc tr.sec input{color:#fff;font:700 21px Arial,sans-serif;text-align:center;text-transform:uppercase}
 .esc td.g{background:var(--g2)}
+.esc input.est{font-style:italic;color:#6A7085}   /* QTD PALLET estimada (~N) */
 .esc tr.row td{height:40px}
 .esc input{display:block;width:100%;height:100%;min-height:38px;border:0;margin:0;padding:0 4px;background:transparent;font:inherit;color:inherit;text-align:center;border-radius:0}
 .esc input:focus{outline:3px solid var(--xl);outline-offset:-3px;background:rgba(33,115,70,.07)}
@@ -72,6 +73,9 @@ tr.sec .x{color:#bbb}
 .tabs button:focus-visible{outline:2px solid var(--xl);outline-offset:-2px}
 .tadd{flex:none;font:600 12px Arial,sans-serif;border:1px dashed #8A90A0;background:transparent;color:#333;border-radius:8px 8px 0 0;padding:9px 12px;min-height:40px;cursor:pointer;margin-left:2px}
 .tadd:hover{border-color:var(--xl);color:var(--xl)}
+.opts input[type=number]{font:13px Arial,sans-serif;padding:5px 6px;border:1px solid #9AA3BD;border-radius:6px;width:80px}
+.calib{font-size:12px;color:#333;background:#F4F6FA;border-radius:6px;padding:6px 8px;line-height:1.45}
+.calib button{font:700 11.5px Arial,sans-serif;border:1px solid var(--xl);background:#fff;color:var(--xl);border-radius:5px;padding:3px 8px;cursor:pointer;margin-left:4px}
 .oDias{display:flex;flex-direction:column;gap:0;max-height:180px;overflow:auto}
 .oDias small{color:#666;font-size:11.5px}
 
@@ -193,6 +197,12 @@ dialog.dd::backdrop{background:rgba(14,27,61,.55)}
         <div id="oTipos"><label style="color:#666">Carregue o Metabase para ver os tipos</label></div>
       </fieldset>
       <fieldset style="grid-column:1/-1">
+        <legend>Estimativa de QTD PALLET (cubagem e peso)</legend>
+        <label><input type="checkbox" id="pOn" checked> Estimar QTD PALLET onde estiver vazia (aparece como <i style="color:#6A7085">~N</i>; ao digitar o número real, vira valor definitivo)</label>
+        <label>m³ úteis por palete <input type="number" id="pM3" min="0.1" step="0.05" value="1.5"> &nbsp; kg máx. por palete <input type="number" id="pKg" min="50" step="50" value="1000"></label>
+        <div class="calib" id="pCal" hidden></div>
+      </fieldset>
+      <fieldset style="grid-column:1/-1">
         <legend>Como preencher</legend>
         <label><input type="radio" name="oModo" value="upd" checked> Atualizar as abas (mantém QTD PALLET, MASTER e o que foi digitado; adiciona cargas novas)</label>
         <label><input type="radio" name="oModo" value="new"> Substituir o conteúdo das abas das datas carregadas</label>
@@ -259,7 +269,8 @@ function parsePeso(v){
   else s=s.replace(',','.');
   return parseFloat(s)||0;
 }
-const num = v => { const n=parseFloat(String(v||'').replace(',','.')); return isNaN(n)?0:n; };
+const num = v => { const n=parseFloat(String(v||'').replace(/^~\s*/,'').replace(',','.')); return isNaN(n)?0:n; };
+const isEst = v => /^~/.test(String(v||'').trim());
 
 /* ============ RENDER ============ */
 function render(focus){
@@ -269,7 +280,7 @@ function render(focus){
     const tb=document.createElement('tbody');
     tb.innerHTML=`<tr class="sec"><td colspan="${NC}"><input data-sec="${si}" value="${esc(s.title)}" aria-label="Título da seção"></td>
       <td class="act"><button type="button" class="x" data-dsec="${si}" title="Excluir seção" aria-label="Excluir seção ${esc(s.title)}">×</button></td></tr>`
-      + s.rows.map((r,ri)=>`<tr class="row">${r.map((v,c)=>`<td${GRAY.has(c)?' class="g"':''}><input data-s="${si}" data-i="${ri}" data-c="${c}" value="${esc(v)}" aria-label="${COLS[c]} linha ${ri+1}"></td>`).join('')}
+      + s.rows.map((r,ri)=>`<tr class="row">${r.map((v,c)=>`<td${GRAY.has(c)?' class="g"':''}><input data-s="${si}" data-i="${ri}" data-c="${c}"${c===4&&isEst(v)?' class="est"':''} value="${esc(v)}" aria-label="${COLS[c]} linha ${ri+1}"></td>`).join('')}
         <td class="act"><button type="button" class="x" data-drow="${si}:${ri}" title="Excluir linha" aria-label="Excluir linha ${ri+1}">×</button></td></tr>`).join('')
       + `<tr class="addrow"><td colspan="${NC+1}"><button type="button" data-add="${si}">+ Linha em ${esc(s.title)}</button></td></tr>`;
     t.appendChild(tb);
@@ -305,9 +316,9 @@ $('#tabs').addEventListener('click',e=>{
   }
 });
 function summary(){
-  let n=0,pal=0,kg=0; const pav={};
-  state.sections.forEach(s=>s.rows.forEach(r=>{ if(!r.some(v=>String(v).trim())) return; n++; pal+=num(r[4]); kg+=parsePeso(r[6]); if(r[1]) pav[r[1]]=(pav[r[1]]||0)+1; }));
-  $('#sum').innerHTML=`<span>Cargas <b>${n.toLocaleString('pt-BR')}</b></span><span>Pallets <b>${pal.toLocaleString('pt-BR')}</b></span><span>Peso total <b>${kg.toLocaleString('pt-BR',{maximumFractionDigits:0})} kg</b></span>`
+  let n=0,pal=0,palEst=0,kg=0; const pav={};
+  state.sections.forEach(s=>s.rows.forEach(r=>{ if(!r.some(v=>String(v).trim())) return; n++; pal+=num(r[4]); if(isEst(r[4])) palEst+=num(r[4]); kg+=parsePeso(r[6]); if(r[1]) pav[r[1]]=(pav[r[1]]||0)+1; }));
+  $('#sum').innerHTML=`<span>Cargas <b>${n.toLocaleString('pt-BR')}</b></span><span>Pallets <b>${pal.toLocaleString('pt-BR')}</b>${palEst?` <i style="color:#6A7085">(~${palEst.toLocaleString('pt-BR')} estimados)</i>`:''}</span><span>Peso total <b>${kg.toLocaleString('pt-BR',{maximumFractionDigits:0})} kg</b></span>`
     + Object.keys(pav).sort().map(k=>`<span>${esc(k)} <b>${pav[k]}</b></span>`).join('');
   const bd=document.querySelector('#tabs .tab.on i'); if(bd) bd.textContent=n;
 }
@@ -323,6 +334,7 @@ tbl.addEventListener('input',e=>{
   if(el.dataset.sec!==undefined){ state.sections[+el.dataset.sec].title=el.value; save(); return; }
   if(el.dataset.c===undefined) return;
   state.sections[+el.dataset.s].rows[+el.dataset.i][+el.dataset.c]=el.value; save(); summary();
+  if(el.dataset.c==='4') el.classList.toggle('est',isEst(el.value));
 });
 tbl.addEventListener('click',e=>{
   const b=e.target.closest('button'); if(!b) return;
@@ -443,6 +455,7 @@ $('#bExp').addEventListener('click',async()=>{
         cell.value = NUMC.has(c) && /^\d+$/.test(t) ? +t : (t||null);
         cell.font={name:'Arial',size:12,bold:true}; cell.alignment=mid; cell.border=box('medium');
         cell.fill=fill(GRAY.has(c)?'FFBFBFBF':'FFFFFFFF');
+        if(c===4 && isEst(t)) cell.font={name:'Arial',size:12,bold:true,italic:true,color:{argb:'FF6A7085'}};
       });
       ws.getRow(r).height=30; r++;
     });
@@ -535,14 +548,16 @@ book=load(); useTab(book.active); render();
     };
     const falta=['loja','carga','peso'].filter(k=>I[k]<0);
     if(falta.length) throw new Error('colunas não encontradas: '+falta.join(', ')+' (esperado: Nroempdestino, Nrocarga, Peso Bruto)');
-    const g=new Map(); let semCarga=0;
+    const g=new Map(); let semCarga=0, gCub=0, gPesoCub=0;
     t.rows.forEach(r=>{
       const carga=toInt(r[I.carga]); if(!carga){ semCarga++; return; }
       const loja=toInt(r[I.loja]); const k=carga+'|'+loja;
       let o=g.get(k);
-      if(!o){ o={carga,loja,peso:0,vol:0,cub:0,pav:{},sub:{},inc:{},desc:'',box:'',stc:'',dia:'',sorter:''}; g.set(k,o); }
+      if(!o){ o={carga,loja,peso:0,vol:0,cub:0,pesoCub:0,pesoSemCub:0,pav:{},sub:{},inc:{},desc:'',box:'',stc:'',dia:'',sorter:''}; g.set(k,o); }
       const p=toNum(r[I.peso])||0;
-      o.peso+=p; if(I.vol>=0) o.vol+=toNum(r[I.vol])||0; if(I.cub>=0) o.cub+=toNum(r[I.cub])||0;
+      o.peso+=p; if(I.vol>=0) o.vol+=toNum(r[I.vol])||0;
+      const cb=I.cub>=0?(toNum(r[I.cub])||0):0;       // itens sem cubagem cadastrada (ex.: produtos por KG) vêm 0
+      if(cb>0){ o.cub+=cb; o.pesoCub+=p; gCub+=cb; gPesoCub+=p; } else o.pesoSemCub+=p;
       const pv=I.pav>=0?String(r[I.pav]||''):''; if(pv) o.pav[pv]=(o.pav[pv]||0)+p+1e-6;
       const sb=I.sub>=0?String(r[I.sub]||''):''; if(sb) o.sub[sb]=(o.sub[sb]||0)+p+1e-6;
       if(!o.desc && I.desc>=0 && r[I.desc]) o.desc=String(r[I.desc]);
@@ -554,7 +569,10 @@ book=load(); useTab(book.active); render();
     });
     // carga × loja com pedidos de mais de um dia vai para a data de maior peso
     let mistas=0; g.forEach(o=>{ o.diaInc=top(o.inc); if(Object.keys(o.inc).length>1) mistas++; });
-    return {itens:[...g.values()], linhas:t.rows.length, semCarga, cargas:new Set([...g.values()].map(o=>o.carga)).size, temInc:I.inc>=0, mistas};
+    // peso sem cubagem vira m³ pela densidade da própria carga×loja (ou a média do arquivo)
+    const mPorKg=gPesoCub?gCub/gPesoCub:0;
+    g.forEach(o=>{ const r=o.pesoCub&&o.cub?o.cub/o.pesoCub:mPorKg; o.cubEst=o.cub+o.pesoSemCub*r; });
+    return {itens:[...g.values()], linhas:t.rows.length, semCarga, cargas:new Set([...g.values()].map(o=>o.carga)).size, temInc:I.inc>=0, mistas, temCub:I.cub>=0&&gCub>0, mPorKg};
   }
 
   /* ---------- 2) Cargas expedição: docas ---------- */
@@ -589,7 +607,7 @@ book=load(); useTab(book.active); render();
         tipoCarga: TIPO_CARGA[norm(sub)] || sub,
         obs: obsDe(o.desc||c.desc, o.sorter),
         doca: c.box || o.box || '',
-        peso:o.peso, vol:o.vol,
+        peso:o.peso, vol:o.vol, cub:o.cubEst||0, pal:estPal(o.cubEst||0,o.peso),
         status: c.status || (/n[aã]o listad/i.test(o.stc) ? 'NÃO LISTADA' : ''),
         dia: o.dia || c.dia || '',
         diaInc: o.diaInc || ''
@@ -611,9 +629,34 @@ book=load(); useTab(book.active); render();
     });
   }
   const pesoTxt = kg => `${Math.round(kg*100)/100} kg`;
+  /* ---------- estimativa de paletes ---------- */
+  const PCFG='cd107_escala_pallet_cfg';
+  try{ const c=JSON.parse(localStorage.getItem(PCFG)||'null'); if(c){ if(c.m3) $('#pM3').value=c.m3; if(c.kg) $('#pKg').value=c.kg; if(c.on===false) $('#pOn').checked=false; } }catch(e){}
+  const cfg = () => ({ on:$('#pOn').checked, m3:parseFloat($('#pM3').value)||1.5, kg:parseFloat($('#pKg').value)||1000 });
+  function estPal(cub,peso){
+    const c=cfg(); if(!(cub>0)&&!(peso>0)) return 0;
+    return Math.max(1, Math.ceil(cub/c.m3-1e-9), Math.ceil(peso/c.kg-1e-9));
+  }
+  function salvarCfg(){ try{ localStorage.setItem(PCFG,JSON.stringify(cfg())); }catch(e){} }
+  ['#pOn','#pM3','#pKg'].forEach(id=>$(id).addEventListener('input',()=>{ salvarCfg(); atualizarPrev(); }));
+  /* calibração: cargas que já têm QTD PALLET real digitada nas abas × cubagem do Metabase */
+  function calibrar(){
+    const box=$('#pCal'); if(!D.dem||!D.dem.temCub){ box.hidden=true; return; }
+    const real=new Map(); linhasTodas(r=>{ const v=String(r[4]||'').trim(); if(/^\d+$/.test(v)&&+v>0) real.set(toInt(r[9])+'|'+toInt(r[0]),+v); });
+    let cub=0, pal=0, n=0; const porObs={};
+    D.dem.itens.forEach(o=>{ const v=real.get(o.carga+'|'+o.loja); if(!v||!(o.cubEst>0)) return;
+      cub+=o.cubEst; pal+=v; n++; const k=obsDe(o.desc,o.sorter)||'(sem tipo)'; const q=porObs[k]=porObs[k]||{cub:0,pal:0,n:0}; q.cub+=o.cubEst; q.pal+=v; q.n++; });
+    if(n<3){ box.hidden=false; box.innerHTML=`Calibração: só ${n} carga(s) deste arquivo têm QTD PALLET real nas abas. Quando houver mais, sugiro aqui o m³ por palete do CD.`; return; }
+    const m=Math.round(cub/pal*100)/100;
+    box.hidden=false;
+    box.innerHTML=`Calibração com <b>${n}</b> carga(s) que já têm QTD PALLET real: média de <b>${m.toLocaleString('pt-BR')} m³ por palete</b> <button type="button" id="pUse" data-v="${m}">Usar ${m.toLocaleString('pt-BR')}</button><br>`
+      + Object.entries(porObs).sort((a,b)=>b[1].n-a[1].n).map(([k,q])=>`${esc(k)}: ${(q.cub/q.pal).toLocaleString('pt-BR',{maximumFractionDigits:2})} m³ (${q.n})`).join(' · ');
+  }
+  $('#pCal').addEventListener('click',e=>{ const b=e.target.closest('#pUse'); if(!b) return; $('#pM3').value=b.dataset.v; salvarCfg(); atualizarPrev(); });
   function paraLinha(x){
     const r=blank();
     r[0]=x.loja; r[1]=x.pav; r[2]=x.loja?'Loja '+pad2(x.loja):''; r[3]=x.tipoCarga;
+    if(cfg().on && x.pal) r[4]='~'+x.pal;
     r[5]=x.doca; r[6]=pesoTxt(x.peso); r[7]=x.obs; r[9]=x.carga; r[10]=x.status;
     return r;
   }
@@ -693,7 +736,7 @@ book=load(); useTab(book.active); render();
                        : `<span class="w">Nenhuma carga das abas aparece na planilha de docas.</span> Carregue também o Metabase para montar a escala.`;
       return;
     }
-    go.textContent='Preencher escala';
+    go.textContent='Preencher escala'; calibrar();
     const lista=filtrar(montar());
     const kg=lista.reduce((a,x)=>a+x.peso,0), comDoca=lista.filter(x=>x.doca).length;
     const porPav={}; lista.forEach(x=>{ porPav[x.pav||'—']=(porPav[x.pav||'—']||0)+1; });
@@ -705,6 +748,8 @@ book=load(); useTab(book.active); render();
         + Object.keys(porPav).sort().map(k=>`${esc(k)}: <b>${porPav[k]}</b>`).join(' · ')
         + `<br>Com doca: <b>${comDoca}</b> · Sem doca: <b>${lista.length-comDoca}</b>`
         + (D.car?'':' <span class="w">(carregue a planilha de docas para preencher a coluna DOCA)</span>')
+        + (cfg().on ? `<br>Paletes estimados: <b>~${lista.reduce((a,x)=>a+x.pal,0).toLocaleString('pt-BR')}</b> (${lista.reduce((a,x)=>a+x.cub,0).toLocaleString('pt-BR',{maximumFractionDigits:1})} m³)`
+            + (D.dem.temCub?'':' <span class="w">sem cubagem no arquivo: estimativa só pelo peso</span>') : '')
         + (D.dem.temInc ? '<br>Abas: ' + abasDe(lista).map(([k,n])=>`${k?fmtD(k):fmtD(book.active)+' (sem data)'} <b>${n}</b>${k&&!book.escalas[k]?' <span class="w">nova</span>':''}`).join(' · ')
             + (D.dem.mistas?`<br><span class="w">${D.dem.mistas} carga(s) × loja têm pedidos de mais de um dia: ficam na aba da data com maior peso.</span>`:'') : '')
         + (modo==='new'?'<br><span class="w">O conteúdo das abas dessas datas será substituído (dá para desfazer).</span>':'')
@@ -748,6 +793,7 @@ book=load(); useTab(book.active); render();
         [0,1,2,3,6,7,9].forEach(c=>{ if(n[c]!=='') r[c]=n[c]; });
         if(n[5]) r[5]=n[5];
         if(n[10]) r[10]=n[10];
+        if(n[4] && (!String(r[4]||'').trim() || isEst(r[4]))) r[4]=n[4];   // nunca sobrescreve valor real
         upd++;
       } else { (novos[x.pav]=novos[x.pav]||[]).push(paraLinha(x)); add++; }
     });
