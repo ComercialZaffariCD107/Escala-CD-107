@@ -265,10 +265,8 @@ dialog.dd::backdrop{background:rgba(14,27,61,.55)}
     </div>
     <div class="opts">
       <fieldset>
-        <legend id="oPerLeg">Cargas geradas no período</legend>
-        <label id="oPer">de <input type="date" id="oDe"> até <input type="date" id="oAte"></label>
-        <div class="oDias" id="oDias" hidden></div>
-        <label><input type="checkbox" id="oSemData" checked> <span id="oSemDataL">Incluir cargas ainda não listadas (sem data)</span></label>
+        <legend>Abas que vão receber cargas</legend>
+        <div class="oDias" id="oDias"><label style="color:#666">Carregue o Metabase: entra tudo o que estiver nele</label></div>
         <label><input type="checkbox" id="oFat" checked> Ignorar cargas já faturadas</label>
       </fieldset>
       <fieldset>
@@ -282,7 +280,7 @@ dialog.dd::backdrop{background:rgba(14,27,61,.55)}
       <fieldset style="grid-column:1/-1">
         <legend>Estimativa de QTD PALLET</legend>
         <div class="calib" style="margin-bottom:4px"><b>Separação</b> (Picking Sorter, Picking Não Sorter, Sorter): cubagem da carga ÷ m³ por palete (e o limite de kg).<br><b>Palete Box / Palete Inteiro</b>: pela norma do produto (base 04): cada palete fechado da quantidade pedida pela loja conta 1. <span id="pNrInfo"></span></div>
-        <label style="color:#444">QTD PALLET é preenchida em todas as abas onde estiver vazia ou estimada (aparece como <i style="color:#6A7085">~N</i>; ao digitar o número real, vira valor definitivo e nunca é sobrescrito)</label>
+        <div style="color:#444;font-size:12.5px">QTD PALLET é preenchida em todas as abas onde estiver vazia ou estimada (aparece como <i style="color:#6A7085">~N</i>; ao digitar o número real, vira valor definitivo e nunca é sobrescrito)</div>
         <label>m³ por palete · picking <input type="number" id="pM3" min="0.1" step="0.05" value="1.5"> &nbsp; m³ por palete · Box/Inteiro sem norma <input type="number" id="pM3B" min="0.1" step="0.05" value="0.75"> &nbsp; kg máx. por palete <input type="number" id="pKg" min="50" step="50" value="1000"></label>
         <label>Coluna Quantidade do Metabase está em <select id="pUn"><option value="un">unidades</option><option value="cx">caixas (embalagem da norma)</option></select></label>
         <div class="calib" id="pCal" hidden></div>
@@ -1090,16 +1088,12 @@ book=load(); useTab(book.active); render();
   function somaInfo(g){ const s={sku:0,semNorma:0,naoFecha:0}; let tem=false;
     g.forEach(x=>{ if(!x.palInfo) return; tem=true; Object.keys(s).forEach(k=>s[k]+=x.palInfo[k]||0); }); return tem?s:null; }
   function filtrar(lista){
-    const de=$('#oDe').value, ate=$('#oAte').value, semData=$('#oSemData').checked, fat=$('#oFat').checked;
+    // sem filtro de data: entra tudo o que estiver no Metabase (cada data de inclusão vira/atualiza a sua aba)
+    const fat=$('#oFat').checked;
     const tipos=new Set([...document.querySelectorAll('#oTipos input:checked')].map(i=>i.value));
-    const porInc=D.dem&&D.dem.temInc, dias=new Set([...document.querySelectorAll('#oDias input:checked')].map(i=>i.value));
     return lista.filter(x=>{
       if(fat && /^FATURAD/i.test(x.status)) return false;
       if(!tipos.has(x.obs||'(sem tipo)')) return false;
-      if(porInc) return x.diaInc ? dias.has(x.diaInc) : semData;
-      if(!x.dia) return semData;
-      if(de && x.dia<de) return false;
-      if(ate && x.dia>ate) return false;
       return true;
     });
   }
@@ -1175,9 +1169,6 @@ book=load(); useTab(book.active); render();
   /* ---------- UI ---------- */
   const dlg=$('#dLoad');
   function abrir(){
-    const base=state.date||today(); const d=new Date(base+'T12:00:00'); d.setDate(d.getDate()-1);
-    if(!$('#oAte').value) $('#oAte').value=base;
-    if(!$('#oDe').value) $('#oDe').value=d.toISOString().slice(0,10);
     atualizarPrev(); dlg.showModal();
   }
   $('#bLoad').addEventListener('click',abrir);
@@ -1218,19 +1209,14 @@ book=load(); useTab(book.active); render();
   }
   function montarDias(){
     const porInc=D.dem&&D.dem.temInc;
-    $('#oPer').hidden=porInc; $('#oDias').hidden=!porInc;
-    $('#oPerLeg').textContent=porInc?'Abas por data de inclusão do pedido':'Cargas geradas no período';
-    $('#oSemDataL').textContent=porInc?'Incluir cargas sem data de inclusão (vão para a aba aberta)':'Incluir cargas ainda não listadas (sem data)';
-    if(!porInc){ $('#oDias').innerHTML=''; return; }
-    const cont={}; montar().forEach(x=>{ if(x.diaInc) cont[x.diaInc]=(cont[x.diaInc]||0)+1; });
+    if(!porInc){ $('#oDias').innerHTML='<label style="color:#666">Metabase sem data de inclusão: tudo vai para a aba aberta</label>'; return; }
+    const cont={}; let sem=0; montar().forEach(x=>{ if(x.diaInc) cont[x.diaInc]=(cont[x.diaInc]||0)+1; else sem++; });
     const ks=Object.keys(cont).sort();
-    $('#oDias').innerHTML = ks.length
-      ? ks.map(k=>`<label><input type="checkbox" value="${k}" checked> ${DOW[new Date(k+'T12:00:00').getDay()]} ${fmtD(k)} · ${cont[k]} linha(s) <small>${book.escalas[k]?'aba existente':'aba nova'}</small></label>`).join('')
-      : '<label style="color:#666">Coluna Dtainclusaopedido vazia</label>';
+    $('#oDias').innerHTML = ks.map(k=>`<label>${DOW[new Date(k+'T12:00:00').getDay()]} ${fmtD(k)} · ${cont[k]} linha(s) <small>${book.escalas[k]?'aba existente':'aba nova'}</small></label>`).join('')
+      + (sem?`<label>Sem data de inclusão · ${sem} linha(s) <small>vão para a aba aberta</small></label>`:'');
   }
-  $('#oDias').addEventListener('change',atualizarPrev);
   $('#oUnir').addEventListener('change',()=>{ if(D.dem){ montarTipos(); montarDias(); } atualizarPrev(); });
-  ['#oDe','#oAte','#oSemData','#oFat'].forEach(id=>$(id).addEventListener('change',atualizarPrev));
+  ['#oFat'].forEach(id=>$(id).addEventListener('change',atualizarPrev));
   $('#oTipos').addEventListener('change',atualizarPrev);
   document.querySelectorAll('input[name=oModo]').forEach(i=>i.addEventListener('change',atualizarPrev));
 
