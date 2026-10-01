@@ -124,6 +124,13 @@ tr.sec .x{color:#bbb}
 .calib{font-size:12px;color:#333;background:#F4F6FA;border-radius:6px;padding:6px 8px;line-height:1.45}
 .calib button{font:700 11.5px Arial,sans-serif;border:1px solid var(--xl);background:#fff;color:var(--xl);border-radius:5px;padding:3px 8px;cursor:pointer;margin-left:4px}
 .oDias{display:flex;flex-direction:column;gap:0;max-height:180px;overflow:auto}
+.conf{margin:0 0 12px;border:1px solid #D5D9E3;border-radius:8px;padding:8px 12px;font-size:13px}
+.conf legend{font-weight:700;font-size:12.5px;padding:0 4px}
+.cfOut{margin-top:8px;max-height:260px;overflow:auto;font-size:12.5px}
+.cfOut table{border-collapse:collapse;width:100%}
+.cfOut th,.cfOut td{border-bottom:1px solid #E6E8EE;padding:3px 6px;text-align:right}
+.cfOut th:first-child,.cfOut td:first-child{text-align:left}
+.cfOut .z{color:#B5480B}
 .oDias small{color:#666;font-size:11.5px}
 
 /* ============ CARREGAR DADOS ============ */
@@ -279,7 +286,7 @@ dialog.dd::backdrop{background:rgba(14,27,61,.55)}
       </fieldset>
       <fieldset style="grid-column:1/-1">
         <legend>Estimativa de QTD PALLET</legend>
-        <div class="calib" style="margin-bottom:4px"><b>Separação</b> (Picking Sorter, Picking Não Sorter, Sorter): cubagem da carga ÷ m³ por palete (e o limite de kg).<br><b>Palete Box / Palete Inteiro</b>: pela norma do produto (base 04): cada palete fechado da quantidade pedida pela loja conta 1. <span id="pNrInfo"></span></div>
+        <div class="calib" style="margin-bottom:4px"><b>Separação</b> (Picking Sorter, Picking Não Sorter, Sorter): cubagem da carga ÷ m³ por palete (e o limite de kg).<br><b>Palete Box / Palete Inteiro</b>: pela norma do produto (base 04): cada produto soma a quantidade de todas as lojas da carga; cada palete fechado conta 1. <span id="pNrInfo"></span></div>
         <div style="color:#444;font-size:12.5px">QTD PALLET é preenchida em todas as abas onde estiver vazia ou estimada (aparece como <i style="color:#6A7085">~N</i>; ao digitar o número real, vira valor definitivo e nunca é sobrescrito)</div>
         <label>m³ por palete · picking <input type="number" id="pM3" min="0.1" step="0.05" value="1.5"> &nbsp; m³ por palete · Box/Inteiro sem norma <input type="number" id="pM3B" min="0.1" step="0.05" value="0.75"> &nbsp; kg máx. por palete <input type="number" id="pKg" min="50" step="50" value="1000"></label>
         <label>Coluna Quantidade do Metabase está em <select id="pUn"><option value="un">unidades</option><option value="cx">caixas (embalagem da norma)</option></select></label>
@@ -291,6 +298,10 @@ dialog.dd::backdrop{background:rgba(14,27,61,.55)}
         <label><input type="radio" name="oModo" value="new"> Substituir o conteúdo das abas das datas carregadas</label>
       </fieldset>
     </div>
+    <fieldset class="conf"><legend>Conferir cálculo de QTD PALLET</legend>
+      <label>Nº da carga <input type="text" id="cfCarga" inputmode="numeric" placeholder="ex.: 1634969" style="width:130px"></label>
+      <div id="cfOut" class="cfOut"></div>
+    </fieldset>
     <div class="prev" id="prev" aria-live="polite">Carregue pelo menos um dos arquivos. Só com a planilha de docas, a escala atual tem as docas atualizadas pelo número da carga.</div>
   </div>
   <div class="dd-f"><button type="button" id="dCancel">Cancelar</button><button type="button" class="go" id="dGo" disabled>Preencher escala</button></div>
@@ -518,8 +529,8 @@ function statusNormas(){
     st.innerHTML=`<b>${BASE_NR.n.toLocaleString('pt-BR')}</b> produtos com norma · ${esc(BASE_NR.arquivo)} · salvo em ${d.toLocaleDateString('pt-BR')} ${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`;
     z.classList.add('ok'); $('#bNrDel').hidden=false;
   } else { st.textContent='Clique ou arraste o arquivo aqui (.txt)'; z.classList.remove('ok'); $('#bNrDel').hidden=true; }
-  $('#bNrRegras').innerHTML = `<span><b>Palete Box · Palete Inteiro Sorter · Palete Inteiro Não Sorter</b> → por produto: paletes = quantidade pedida ÷ unidades da norma, só os paletes <b>fechados</b> (1,8 palete → 1). Soma por carga × loja.</span>`
-    + `<span>Produto que não fecha palete não conta; se nenhum fecha, a carga fica com 1. Produto sem norma na base → pela cubagem (m³ Box/Inteiro).</span>`
+  $('#bNrRegras').innerHTML = `<span><b>Palete Box · Palete Inteiro Sorter · Palete Inteiro Não Sorter</b> → por produto: soma a quantidade de <b>todas as lojas da carga</b> ÷ unidades da norma, só os paletes <b>fechados</b> (1,8 palete → 1). Soma dos produtos = QTD PALLET da carga.</span>`
+    + `<span>Produto que não fecha palete não conta; se nenhum fecha, a carga fica com 1. Produto sem norma na base → pela cubagem (m³ Box/Inteiro). Para conferir uma carga: Carregar dados → Conferir cálculo.</span>`
     + `<span><b>Separação</b> (Picking Sorter, Picking Não Sorter, Sorter) → continua pela cubagem da carga.</span>`;
   const inf=$('#pNrInfo'); if(inf) inf.innerHTML = BASE_NR ? `<span style="color:#1E7B4F">Base 04 carregada (${BASE_NR.n.toLocaleString('pt-BR')} produtos).</span>` : `<span class="w" style="color:#B5480B">Base 04 não carregada: Box/Inteiro ficam pela cubagem até enviar em "Bases de dados".</span>`;
   $('#bBase').classList.toggle('tem',!!(BASE_LS||BASE_NR));
@@ -992,15 +1003,31 @@ book=load(); useTab(book.active); render();
     };
     const falta=['loja','carga','peso'].filter(k=>I[k]<0);
     if(falta.length) throw new Error('colunas não encontradas: '+falta.join(', ')+' (esperado: Nroempdestino, Nrocarga, Peso Bruto)');
+    /* "0.012" no CSV do Metabase é 0,012 m³ (não 12): decide o separador decimal olhando a coluna inteira */
+    const numCol = ix => {
+      if(ix<0) return ()=>0;
+      let pt=0, vg=0;
+      for(const r of t.rows){ const v=r[ix]; if(typeof v!=='string') continue; const x=v.trim();
+        if(/^-?\d+\.\d+$/.test(x) && !/^-?[1-9]\d{0,2}\.\d{3}$/.test(x)) pt++;     // 0.012 · 12.5 · 1.2345 → ponto decimal
+        else if(/^-?\d+,\d+$/.test(x) && !/^-?[1-9]\d{0,2},\d{3}$/.test(x)) vg++;   // 0,012 · 12,5 → vírgula decimal
+        else if(/^-?\d{1,3}(\.\d{3})+,\d+$/.test(x)) vg++; else if(/^-?\d{1,3}(,\d{3})+\.\d+$/.test(x)) pt++;
+        if(pt+vg>300) break; }
+      const dec = pt>vg ? '.' : vg>pt ? ',' : null;
+      return v=>{ if(typeof v==='number') return v; const x=String(v??'').trim(); if(!x) return 0;
+        if(dec==='.') return parseFloat(x.replace(/,/g,''))||0;
+        if(dec===',') return parseFloat(x.replace(/\./g,'').replace(',','.'))||0;
+        return toNum(x)||0; };
+    };
+    const nPeso=numCol(I.peso), nVol=numCol(I.vol), nCub=numCol(I.cub), nPal=numCol(I.pal);
     const g=new Map(); let semCarga=0, gCub=0, gPesoCub=0;
     t.rows.forEach(r=>{
       const carga=toInt(r[I.carga]); if(!carga){ semCarga++; return; }
       const loja=toInt(r[I.loja]); const k=carga+'|'+loja;
       let o=g.get(k);
       if(!o){ o={carga,loja,peso:0,vol:0,cub:0,pesoCub:0,pesoSemCub:0,pav:{},sub:{},inc:{},seqs:{},lin:{},qtd:{},cubSq:{},pesoSq:{},desc:'',box:'',stc:'',dia:'',sorter:''}; g.set(k,o); }
-      const p=toNum(r[I.peso])||0;
-      o.peso+=p; if(I.vol>=0) o.vol+=toNum(r[I.vol])||0;
-      const cb=I.cub>=0?(toNum(r[I.cub])||0):0;       // itens sem cubagem cadastrada (ex.: produtos por KG) vêm 0
+      const p=nPeso(r[I.peso]), q=nVol(r[I.vol]);
+      o.peso+=p; o.vol+=q;
+      const cb=nCub(r[I.cub]);       // itens sem cubagem cadastrada (ex.: produtos por KG) vêm 0
       if(cb>0){ o.cub+=cb; o.pesoCub+=p; gCub+=cb; gPesoCub+=p; } else o.pesoSemCub+=p;
       const pv=I.pav>=0?String(r[I.pav]||''):''; if(pv) o.pav[pv]=(o.pav[pv]||0)+p+1e-6;
       const sb=I.sub>=0?String(r[I.sub]||''):''; if(sb) o.sub[sb]=(o.sub[sb]||0)+p+1e-6;
@@ -1009,16 +1036,19 @@ book=load(); useTab(book.active); render();
       if(!o.stc && I.stc>=0 && r[I.stc]) o.stc=String(r[I.stc]);
       if(!o.dia && I.dt>=0) o.dia=toDay(r[I.dt]);
       if(I.sorter>=0 && /sim/i.test(r[I.sorter])) o.sorter='SIM';
-      if(I.pal>=0) o.palReal=(o.palReal||0)+(toNum(r[I.pal])||0);   // coluna real de paletes, se o Metabase trouxer
+      if(I.pal>=0) o.palReal=(o.palReal||0)+nPal(r[I.pal]);   // coluna real de paletes, se o Metabase trouxer
       const di=I.inc>=0?toDay(r[I.inc]):''; if(di) o.inc[di]=(o.inc[di]||0)+p+1e-6;
       const sq=I.seq>=0?toInt(r[I.seq]):''; if(sq){ o.seqs[sq]=1; if(I.lin>=0 && r[I.lin]) o.lin[sq]=String(r[I.lin]).trim().toUpperCase();
-        o.qtd[sq]=(o.qtd[sq]||0)+(I.vol>=0?(toNum(r[I.vol])||0):0); o.cubSq[sq]=(o.cubSq[sq]||0)+cb; o.pesoSq[sq]=(o.pesoSq[sq]||0)+p; }
+        o.qtd[sq]=(o.qtd[sq]||0)+q; o.cubSq[sq]=(o.cubSq[sq]||0)+cb; o.pesoSq[sq]=(o.pesoSq[sq]||0)+p; }
     });
     // carga × loja com pedidos de mais de um dia vai para a data de maior peso
     let mistas=0; g.forEach(o=>{ o.diaInc=top(o.inc); if(Object.keys(o.inc).length>1) mistas++; });
     // peso sem cubagem vira m³ pela densidade da própria carga×loja (ou a média do arquivo)
     const mPorKg=gPesoCub?gCub/gPesoCub:0;
-    g.forEach(o=>{ const r=o.pesoCub&&o.cub?o.cub/o.pesoCub:mPorKg; o.cubEst=o.cub+o.pesoSemCub*r; });
+    g.forEach(o=>{
+      let r=mPorKg;
+      if(o.pesoCub>0 && o.cub>0 && o.pesoCub>=o.pesoSemCub){ r=o.cub/o.pesoCub; if(mPorKg) r=Math.min(Math.max(r,mPorKg/4),mPorKg*4); }
+      o.cubEst=o.cub+o.pesoSemCub*r; });
     return {itens:[...g.values()], linhas:t.rows.length, semCarga, cargas:new Set([...g.values()].map(o=>o.carga)).size, temInc:I.inc>=0, mistas, temCub:I.cub>=0&&gCub>0, mPorKg, temSeq:I.seq>=0, temLin:I.lin>=0, temQtd:I.vol>=0};
   }
 
@@ -1056,6 +1086,7 @@ book=load(); useTab(book.active); render();
         obs: obsDe(o.desc||c.desc, o.sorter),
         doca: c.box || o.box || '',
         peso:o.peso, vol:o.vol, cub:o.cubEst||0, palReal:o.palReal||0, pal:o.palReal||pe.pal, palModo:pe?pe.modo:'real', palInfo:pe?pe.info:null,
+        qtd:o.qtd, cubSq:o.cubSq, pesoSq:o.pesoSq,
         status: c.status || (/n[aã]o listad/i.test(o.stc) ? 'NÃO LISTADA' : ''),
         seqs:o.seqs, lin:o.lin, obs2: classificarCarga(obsDe(o.desc||c.desc,o.sorter), o.seqs, o.lin),
         dia: o.dia || c.dia || '',
@@ -1078,10 +1109,16 @@ book=load(); useTab(book.active); render();
       out.push({ carga:g[0].carga, loja:'M', nLojas:g.length, pav:porPeso('pav'),
         tipoCarga: tipos.size>1?'Mista':[...tipos][0]||'', obs:porPeso('obs')||g[0].obs,
         doca:g.find(x=>x.doca)?.doca||'', peso:soma('peso'), vol:soma('vol'), cub:soma('cub'),
-        palReal:soma('palReal'), pal:soma('pal'),    // paletes por loja somados: cada loja tem os seus
-        palModo:g[0].palModo, palInfo:somaInfo(g),
+        palReal:soma('palReal'), pal:soma('pal'), palModo:g[0].palModo, palInfo:somaInfo(g),
         seqs, lin, obs2: classificarCarga(obsM, seqs, lin),
         status:g.find(x=>x.status)?.status||'', dia:porPeso('dia'), diaInc:top(inc)||porPeso('diaInc'), inc });
+      // Box/Inteiro: o palete fechado é do PRODUTO na carga (o sorter divide entre as lojas) → soma a quantidade
+      // de cada produto de todas as lojas e só então divide pela norma
+      const u=out[out.length-1];
+      if(!u.palReal && g.every(x=>x.palModo==='norma')){
+        const q={}, cb={}, ps={}; g.forEach(x=>{ for(const k in x.qtd){ q[k]=(q[k]||0)+x.qtd[k]; cb[k]=(cb[k]||0)+(x.cubSq[k]||0); ps[k]=(ps[k]||0)+(x.pesoSq[k]||0); } });
+        const r=palNorma(q,cb,ps); u.pal=r.pal; u.palInfo=r.info; u.qtd=q; u.cubSq=cb; u.pesoSq=ps;
+      }
     });
     return out;
   }
@@ -1109,21 +1146,28 @@ book=load(); useTab(book.active); render();
   function estPalCarga(o,obs){
     if(!ehBox(obs) || !BASE_NR || !D.dem || !D.dem.temQtd || !Object.keys(o.qtd||{}).length)
       return {pal:estPal(o.cubEst||0,o.peso,obs), modo:ehBox(obs)?'cubBox':'cub', info:null};
-    const c=cfg(); let pal=0, cubSem=0, pesoSem=0; const info={sku:0,semNorma:0,naoFecha:0};
-    Object.entries(o.qtd).forEach(([sq,q])=>{
+    const r=palNorma(o.qtd,o.cubSq,o.pesoSq);
+    return {pal:r.pal, modo:'norma', info:r.info};
+  }
+  /* por produto: quantidade ÷ unidades da norma → só paletes fechados; produto sem norma → cubagem ÷ m³ Box/Inteiro.
+     Se nada fecha palete, a linha fica com 1 (a carga existe). det = conta de cada produto (para conferência) */
+  function palNorma(qtd,cubSq,pesoSq){
+    const c=cfg(); let pal=0, cubSem=0, pesoSem=0; const info={sku:0,semNorma:0,naoFecha:0}, det=[];
+    Object.entries(qtd).forEach(([sq,q])=>{
       if(!(q>0)) return; info.sku++;
       const nr=BASE_NR.sku[sq];
-      if(!nr){ info.semNorma++; cubSem+=o.cubSq[sq]||0; pesoSem+=o.pesoSq[sq]||0; return; }
+      if(!nr){ info.semNorma++; cubSem+=cubSq[sq]||0; pesoSem+=pesoSq[sq]||0; det.push({sq,q,porPal:0,n:null,cub:cubSq[sq]||0}); return; }
       const porPal = c.un==='cx' ? nr[1] : nr[0];
       const n=Math.floor(q/porPal+1e-9);
-      if(n<1) info.naoFecha++; pal+=n;
+      if(n<1) info.naoFecha++; pal+=n; det.push({sq,q,porPal,n});
     });
-    if(cubSem>0||pesoSem>0){   // produto sem norma: cubagem (ou peso pela densidade do arquivo) ÷ m³ Box/Inteiro
+    let semN=0;
+    if(cubSem>0||pesoSem>0){
       const cb=cubSem>0?cubSem:pesoSem*(D.dem.mPorKg||0);
-      pal+=Math.max(1, Math.ceil(cb/c.m3b-1e-9), Math.ceil(pesoSem/c.kg-1e-9));
+      semN=Math.max(Math.ceil(cb/c.m3b-1e-9), Math.ceil(pesoSem/c.kg-1e-9)); pal+=semN;
     }
-    if(!pal && info.sku) pal=1;
-    return {pal, modo:'norma', info};
+    const min1 = !pal && info.sku>0; if(min1) pal=1;
+    return {pal, info, det, semN, min1};
   }
   function estPal(cub,peso,obs){
     const c=cfg(); if(!(cub>0)&&!(peso>0)) return 0;
@@ -1221,6 +1265,7 @@ book=load(); useTab(book.active); render();
   document.querySelectorAll('input[name=oModo]').forEach(i=>i.addEventListener('change',atualizarPrev));
 
   function atualizarPrev(){
+    if($('#cfCarga').value) setTimeout(conferir);
     const go=$('#dGo'), pv=$('#prev');
     if(!D.dem && !D.car){ go.disabled=true; pv.innerHTML='Carregue pelo menos um dos arquivos. Só com a planilha de docas, a escala atual tem as docas atualizadas pelo número da carga.'; return; }
     if(!D.dem){
@@ -1268,6 +1313,34 @@ book=load(); useTab(book.active); render();
     return t;
   }
   document.addEventListener('bases',()=>{ if($('#dLoad').open) atualizarPrev(); });
+  function conferir(){
+    const out=$('#cfOut'), n=toInt($('#cfCarga').value);
+    if(!n){ out.innerHTML=''; return; }
+    if(!D.dem){ out.innerHTML='<span class="z">Carregue o Metabase primeiro.</span>'; return; }
+    const x=montar().find(v=>v.carga===n);
+    if(!x){ out.innerHTML=`<span class="z">Carga ${n} não está no Metabase carregado.</span>`; return; }
+    const f=(v,d=0)=>(+v||0).toLocaleString('pt-BR',{maximumFractionDigits:d}), c=cfg();
+    let h=`<b>${esc(x.obs||'(sem tipo)')}</b> · ${x.loja==='M'?`${x.nLojas} lojas`:'Loja '+x.loja} · ${fmtPeso(x.peso)} · <b>QTD PALLET ${x.palReal?f(x.palReal)+' (real do Metabase)':'~'+x.pal}</b><br>`;
+    if(x.palReal){ out.innerHTML=h; return; }
+    if(x.palModo!=='norma'){
+      h+=`Pela cubagem: ${f(x.cub,2)} m³ ÷ ${ehBox(x.obs)?c.m3b:c.m3} m³ = ${f(Math.ceil(x.cub/(ehBox(x.obs)?c.m3b:c.m3)-1e-9))} · peso ${f(x.peso)} kg ÷ ${c.kg} kg = ${f(Math.ceil(x.peso/c.kg-1e-9))} → vale o maior.`;
+      if(ehBox(x.obs)) h+=` <span class="z">(Box/Inteiro sem norma: ${!BASE_NR?'base 04 não carregada':!D.dem.temQtd?'Metabase sem coluna Quantidade':'Metabase sem SEQPRODUTO'})</span>`;
+      out.innerHTML=h; return;
+    }
+    const r=palNorma(x.qtd,x.cubSq,x.pesoSq), un=c.un==='cx'?'cx':'un';
+    h+=`Soma de cada produto em todas as lojas ÷ norma (só paletes fechados)`
+      + `<table><tr><th>Produto</th><th>Pedido (${un})</th><th>${un}/palete</th><th>Paletes</th><th>Sobra (${un})</th></tr>`
+      + r.det.sort((a,b)=>(b.n??-1)-(a.n??-1)||b.q-a.q).map(d=>d.porPal
+          ? `<tr${d.n<1?' class="z"':''}><td>${d.sq}</td><td>${f(d.q)}</td><td>${f(d.porPal)}</td><td>${d.n}</td><td>${f(d.q-d.n*d.porPal)}</td></tr>`
+          : `<tr class="z"><td>${d.sq}</td><td>${f(d.q)}</td><td colspan="3">sem norma na base 04 (vai pela cubagem)</td></tr>`).join('')
+      + `</table>`
+      + (r.semN?`Produtos sem norma: ${r.semN} palete(s) pela cubagem · `:'')
+      + (r.min1?'Nenhum produto fecha palete → 1 · ':'')
+      + `<b>Total ${r.pal}</b>`;
+    out.innerHTML=h;
+  }
+  $('#cfCarga').addEventListener('input',conferir);
+  document.addEventListener('bases',conferir);
   function linhasTodas(fn){ Object.values(book.escalas).forEach(e=>e.sections.forEach(s=>s.rows.forEach(fn))); }
   function abasDe(lista){ const m={}; lista.forEach(x=>{ const k=x.diaInc||''; m[k]=(m[k]||0)+1; }); return Object.keys(m).sort().map(k=>[k,m[k]]); }
   const lojaKey = v => ehMista(v) ? 'M' : toInt(v);
