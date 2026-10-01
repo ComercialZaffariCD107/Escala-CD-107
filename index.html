@@ -282,7 +282,7 @@ dialog.dd::backdrop{background:rgba(14,27,61,.55)}
       <fieldset style="grid-column:1/-1">
         <legend>Estimativa de QTD PALLET</legend>
         <div class="calib" style="margin-bottom:4px"><b>Separação</b> (Picking Sorter, Picking Não Sorter, Sorter): cubagem da carga ÷ m³ por palete (e o limite de kg).<br><b>Palete Box / Palete Inteiro</b>: pela norma do produto (base 04): cada palete fechado da quantidade pedida pela loja conta 1. <span id="pNrInfo"></span></div>
-        <label><input type="checkbox" id="pOn" checked> Estimar QTD PALLET onde estiver vazia (aparece como <i style="color:#6A7085">~N</i>; ao digitar o número real, vira valor definitivo)</label>
+        <label style="color:#444">QTD PALLET é preenchida em todas as abas onde estiver vazia ou estimada (aparece como <i style="color:#6A7085">~N</i>; ao digitar o número real, vira valor definitivo e nunca é sobrescrito)</label>
         <label>m³ por palete · picking <input type="number" id="pM3" min="0.1" step="0.05" value="1.5"> &nbsp; m³ por palete · Box/Inteiro sem norma <input type="number" id="pM3B" min="0.1" step="0.05" value="0.75"> &nbsp; kg máx. por palete <input type="number" id="pKg" min="50" step="50" value="1000"></label>
         <label>Coluna Quantidade do Metabase está em <select id="pUn"><option value="un">unidades</option><option value="cx">caixas (embalagem da norma)</option></select></label>
         <div class="calib" id="pCal" hidden></div>
@@ -1077,9 +1077,9 @@ book=load(); useTab(book.active); render();
   const pesoTxt = kg => `${Math.round(kg*100)/100} kg`;
   /* ---------- estimativa de paletes ---------- */
   const PCFG='cd107_escala_pallet_cfg';
-  try{ const c=JSON.parse(localStorage.getItem(PCFG)||'null'); if(c){ if(c.m3) $('#pM3').value=c.m3; if(c.m3b) $('#pM3B').value=c.m3b; if(c.kg) $('#pKg').value=c.kg; if(c.on===false) $('#pOn').checked=false; } }catch(e){}
+  try{ const c=JSON.parse(localStorage.getItem(PCFG)||'null'); if(c){ if(c.m3) $('#pM3').value=c.m3; if(c.m3b) $('#pM3B').value=c.m3b; if(c.kg) $('#pKg').value=c.kg; } }catch(e){}
   try{ const c=JSON.parse(localStorage.getItem(PCFG)||'null'); if(c&&c.un) $('#pUn').value=c.un; }catch(e){}
-  const cfg = () => ({ on:$('#pOn').checked, m3:parseFloat($('#pM3').value)||1.5, m3b:parseFloat($('#pM3B').value)||0.75, kg:parseFloat($('#pKg').value)||1000, un:$('#pUn').value||'un' });
+  const cfg = () => ({ on:true, m3:parseFloat($('#pM3').value)||1.5, m3b:parseFloat($('#pM3B').value)||0.75, kg:parseFloat($('#pKg').value)||1000, un:$('#pUn').value||'un' });
   const ehBox = obs => /box|inteiro/i.test(obs||'');      // Palete Box, Palete Inteiro Sorter, Palete Inteiro Não Sorter
   /* QTD PALLET da carga × loja:
      separação → cubagem/peso · Box/Inteiro → norma do produto (base 04): só paletes fechados por produto */
@@ -1108,7 +1108,7 @@ book=load(); useTab(book.active); render();
     return Math.max(1, Math.ceil(cub/m3-1e-9), Math.ceil(peso/c.kg-1e-9));
   }
   function salvarCfg(){ try{ localStorage.setItem(PCFG,JSON.stringify(cfg())); }catch(e){} if(window.NUVEM) NUVEM.pref('pcfg',cfg()); }
-  ['#pOn','#pM3','#pM3B','#pKg','#pUn'].forEach(id=>$(id).addEventListener('input',()=>{ salvarCfg(); atualizarPrev(); }));
+  ['#pM3','#pM3B','#pKg','#pUn'].forEach(id=>$(id).addEventListener('input',()=>{ salvarCfg(); atualizarPrev(); }));
   /* calibração: cargas que já têm QTD PALLET real digitada nas abas × cubagem do Metabase */
   function calibrar(){
     const box=$('#pCal'); if(!D.dem||!D.dem.temCub){ box.hidden=true; return; }
@@ -1211,7 +1211,7 @@ book=load(); useTab(book.active); render();
     if(!D.dem){
       let n=0; linhasTodas(r=>{ if(D.car.map.has(toInt(r[C.CARGA]))) n++; });
       go.disabled=!n; go.textContent='Atualizar docas';
-      pv.innerHTML = n ? `Só a planilha de docas: <b>${n}</b> linha(s) das abas têm a carga nela e vão receber a <b>DOCA</b>.`
+      pv.innerHTML = n ? `Só a planilha de docas: <b>${n}</b> linha(s) das abas têm a carga nela e vão receber a <b>DOCA</b>.<br><span class="w">QTD PALLET precisa do Metabase (cubagem, quantidade e produto): carregue o arquivo 1 também.</span>`
                        : `<span class="w">Nenhuma carga das abas aparece na planilha de docas.</span> Carregue também o Metabase para montar a escala.`;
       return;
     }
@@ -1313,6 +1313,19 @@ book=load(); useTab(book.active); render();
     return {upd, add};
   }
 
+  /* QTD PALLET: varre todas as abas e preenche onde estiver vazia ou estimada (~N), pelo Metabase carregado */
+  function preencherPal(){
+    if(!D.dem) return 0;
+    const m=new Map(); montar().forEach(x=>{ const v=x.palReal?String(Math.round(x.palReal)):(x.pal?'~'+x.pal:''); if(v) m.set(x.carga+'|'+x.loja,v); });
+    let n=0;
+    linhasTodas(r=>{
+      const v=m.get(toInt(r[C.CARGA])+'|'+lojaKey(r[C.LOJA])); if(!v) return;
+      const at=String(r[C.PAL]||'').trim();
+      if(at && !isEst(at)) return;                    // valor real digitado: não mexe
+      r[C.PAL]=v; n++;
+    });
+    return n;
+  }
   $('#dGo').addEventListener('click',()=>{
     snapshot();
     if(!D.dem){                                     // só docas: atualiza todas as abas
@@ -1323,7 +1336,7 @@ book=load(); useTab(book.active); render();
     const lista=filtrar(montar()).sort(ordenar);
     const modo=document.querySelector('input[name=oModo]:checked').value;
     if(!D.dem.temInc){                              // arquivo sem Dtainclusaopedido: vai tudo para a aba aberta
-      const r=aplicar(lista,modo); save(); render(); dlg.close();
+      const r=aplicar(lista,modo); const np=preencherPal(); save(); render(); dlg.close();
       toast(modo==='new'?`Aba ${fmtD(book.active)} montada: ${lista.length} linhas.`:`${r.upd} linha(s) atualizada(s) e ${r.add} carga(s) nova(s) adicionada(s).`,true); return;
     }
     // uma aba por data de inclusão do pedido
@@ -1335,8 +1348,9 @@ book=load(); useTab(book.active); render();
       useTab(k); const r=aplicar(grupos.get(k),modo); upd+=r.upd; add+=r.add;
     });
     useTab(grupos.has(aberta)?aberta:ks[ks.length-1]);
+    const np=preencherPal();
     save(); render(); dlg.close();
-    toast(`${ks.length} aba(s) preenchida(s)${criadas?` (${criadas} nova(s))`:''}: ${add} carga(s) adicionada(s)${upd?`, ${upd} atualizada(s)`:''}.`,true);
+    toast(`${ks.length} aba(s) preenchida(s)${criadas?` (${criadas} nova(s))`:''}: ${add} carga(s) adicionada(s)${upd?`, ${upd} atualizada(s)`:''} · QTD PALLET em ${np} linha(s).`,true);
   });
 })();
 </script>
@@ -1826,7 +1840,7 @@ const COL_CFG  = 'escala_config';    // base linha de separação (em partes) + 
     const d=doc.data();
     if(d.pcfg){ try{ localStorage.setItem('cd107_escala_pallet_cfg',JSON.stringify(d.pcfg)); }catch(e){}
       const c=d.pcfg, set=(id,v)=>{ const el=$(id); if(el && el!==document.activeElement && v!=null) el.value=v; };
-      set('#pM3',c.m3); set('#pM3B',c.m3b); set('#pKg',c.kg); if(c.un) set('#pUn',c.un); if(typeof c.on==='boolean') $('#pOn').checked=c.on; }
+      set('#pM3',c.m3); set('#pM3B',c.m3b); set('#pKg',c.kg); if(c.un) set('#pUn',c.un); }
     if(d.psel){ try{ localStorage.setItem(PSEL_KEY,JSON.stringify(d.psel)); }catch(e){} }
   }, err=>console.error('[nuvem] prefs',err));
 
