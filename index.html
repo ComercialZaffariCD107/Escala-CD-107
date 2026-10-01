@@ -570,18 +570,42 @@ function snapshot(){ ensureIds(book); undoSnap=serBook(book); undoAfter=null; }
 
 /* ============ PESO: "360.7 kg", "1,930 kg" (vírgula de milhar), "1.930,5 kg" ============ */
 function parsePeso(v){
-  let s=String(v||'').toLowerCase().replace(/kg/g,'').replace(/\s/g,'');
+  let s=String(v||'').toLowerCase().replace(/\s/g,'');
+  const ton=/t(on)?$/.test(s) && !/kg$/.test(s);       // "27,03 t" = toneladas
+  s=s.replace(/kg$|ton$|t$/,'');
   if(!s) return 0;
+  if(ton) return pesoNum(s)*1000;
+  return pesoNum(s);
+}
+function pesoNum(s){
   if(/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(s)) s=s.replace(/,/g,'');          // 1,930 / 12,345.6
   else if(/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) s=s.replace(/\./g,'').replace(',','.'); // 1.930,5
   else s=s.replace(',','.');
   return parseFloat(s)||0;
+}
+/* exibição única do peso (padrão brasileiro, vírgula = decimal):
+   até 999 kg → "427 kg" · "0,46 kg"     a partir de 1.000 kg → "27,03 t" · "742,2 t" · "1.361 t" */
+function fmtPeso(kg){
+  kg=+kg||0; const f=(v,d)=>v.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:d});
+  if(Math.round(Math.abs(kg))<1000) return f(kg, kg<10?2:0)+' kg';
+  const t=kg/1000; return f(t, t<100?2:t<1000?1:0)+' t';
+}
+/* padroniza a coluna PESO de todas as abas (dados antigos vinham "27030.26 kg", "1,930 kg") */
+function normPesos(){
+  let n=0;
+  Object.values(book.escalas).forEach(e=>e.sections.forEach(s=>s.rows.forEach(r=>{
+    const v=String(r[C.PESO]??'').trim(); if(!v) return;
+    const kg=parsePeso(v); if(!(kg>0)&&!/^0/.test(v)) return;   // texto que não é peso: deixa como está
+    const f=fmtPeso(kg); if(f!==v){ r[C.PESO]=f; n++; }
+  })));
+  return n;
 }
 const num = v => { const n=parseFloat(String(v||'').replace(/^~\s*/,'').replace(',','.')); return isNaN(n)?0:n; };
 const isEst = v => /^~/.test(String(v||'').trim());
 
 /* ============ RENDER ============ */
 function render(focus){
+  if(normPesos()) save();
   $('#title').value=state.title; $('#date').value=state.date||'';
   const t=$('#tbl'); t.querySelectorAll('tbody').forEach(b=>b.remove());
   state.sections.forEach((s,si)=>{
@@ -641,7 +665,7 @@ function summary(){
         : n ? `<span class="k ok">Sem doca <b>0 ✓</b></span>` : '')
     + `<span class="k">Cargas <b>${f(n)}</b></span>`
     + `<span class="k">Pallets <b>${f(pal)}</b>${palEst?`<i>~${f(palEst)} estimados</i>`:''}</span>`
-    + `<span class="k">Peso total <b>${kg.toLocaleString('pt-BR',{maximumFractionDigits:0})} kg</b></span>`
+    + `<span class="k">Peso total <b>${fmtPeso(kg)}</b></span>`
     + (Object.keys(pav).length?'<span class="sep"></span>':'')
     + Object.keys(pav).sort().map(k=>`<span class="k pv">${esc(k)} <b>${pav[k]}</b></span>`).join('')
     + `<button type="button" class="rel" id="bRel" title="Relatório do que falta listar, por data de inclusão do pedido">Relatório de pendências</button>`;
@@ -676,6 +700,11 @@ tbl.addEventListener('input',e=>{
   state.sections[+el.dataset.s].rows[+el.dataset.i][+el.dataset.c]=el.value; save(); summary();
   if(+el.dataset.c===C.PAL) el.classList.toggle('est',isEst(el.value));
   const tr=el.closest('tr'), td=tr&&tr.children[C.DOCA]; if(td) td.classList.toggle('nodoca',semDocaRow(state.sections[+el.dataset.s].rows[+el.dataset.i]));
+});
+tbl.addEventListener('change',e=>{        // ao sair da célula PESO: "500" → "500 kg", "2500" → "2,5 t"
+  const el=e.target; if(el.dataset.c===undefined || +el.dataset.c!==C.PESO || !el.value.trim()) return;
+  const r=state.sections[+el.dataset.s].rows[+el.dataset.i], kg=parsePeso(el.value);
+  if(kg>0||/^0/.test(el.value.trim())){ el.value=r[C.PESO]=fmtPeso(kg); save(); summary(); }
 });
 tbl.addEventListener('click',e=>{
   const b=e.target.closest('button'); if(!b) return;
@@ -787,7 +816,7 @@ function montarImpressao(idx){
     const body=(rows.length?rows:[blank()]).map(r=>`<tr class="row">${r.map((v,c)=>`<td class="${GRAY.has(c)?'g':''}${c===C.PAL&&isEst(v)?' est':''}">${esc(v)}</td>`).join('')}</tr>`).join('');
     return `<section class="pp"><div class="head"><div class="tt">${esc(state.title)}</div><div class="date">${d}/${m}/${y}</div></div>
       <table class="esc"><colgroup>${cols}</colgroup>${head.replace('</thead>',`<tr class="sec"><td colspan="${NC}">${esc(s.title)}</td></tr></thead>`)}<tbody>${body}</tbody></table>
-      <div class="ptot"><span>Cargas <b>${rows.length}</b></span><span>Pallets <b>${pal.toLocaleString('pt-BR')}</b></span><span>Peso total <b>${kg.toLocaleString('pt-BR',{maximumFractionDigits:0})} kg</b></span></div></section>`;
+      <div class="ptot"><span>Cargas <b>${rows.length}</b></span><span>Pallets <b>${pal.toLocaleString('pt-BR')}</b></span><span>Peso total <b>${fmtPeso(kg)}</b></span></div></section>`;
   }).join('');
 }
 $('#pGo').addEventListener('click',()=>{
@@ -1074,7 +1103,7 @@ book=load(); useTab(book.active); render();
       return true;
     });
   }
-  const pesoTxt = kg => `${Math.round(kg*100)/100} kg`;
+  const pesoTxt = fmtPeso;
   /* ---------- estimativa de paletes ---------- */
   const PCFG='cd107_escala_pallet_cfg';
   try{ const c=JSON.parse(localStorage.getItem(PCFG)||'null'); if(c){ if(c.m3) $('#pM3').value=c.m3; if(c.m3b) $('#pM3B').value=c.m3b; if(c.kg) $('#pKg').value=c.kg; } }catch(e){}
@@ -1223,7 +1252,7 @@ book=load(); useTab(book.active); render();
     go.disabled=!lista.length;
     const modo=document.querySelector('input[name=oModo]:checked').value;
     pv.innerHTML = lista.length
-      ? `<b>${lista.length.toLocaleString('pt-BR')}</b> linhas de <b>${cargas.toLocaleString('pt-BR')}</b> cargas · <b>${Math.round(kg).toLocaleString('pt-BR')} kg</b>`
+      ? `<b>${lista.length.toLocaleString('pt-BR')}</b> linhas de <b>${cargas.toLocaleString('pt-BR')}</b> cargas · <b>${fmtPeso(kg)}</b>`
         + (lista.some(x=>x.loja==='M') ? ` · <b>${lista.filter(x=>x.loja==='M').length}</b> carga(s) de lojas mistas` : '') + '<br>'
         + Object.keys(porPav).sort().map(k=>`${esc(k)}: <b>${porPav[k]}</b>`).join(' · ')
         + `<br>Com doca: <b>${comDoca}</b> · Sem doca: <b>${lista.length-comDoca}</b>`
@@ -1400,7 +1429,7 @@ book=load(); useTab(book.active); render();
     L.push(`_${agora()} · cargas sem doca_`);
     L.push('');
     if(!dados.length){ L.push('✅ Nenhuma carga pendente de listagem.'); return L.join('\n'); }
-    L.push(`🔴 *TOTAL: ${fN(T.n)} carga${T.n===1?'':'s'}* · ${palTxt(T)} · ${fN(T.kg)} kg`);
+    L.push(`🔴 *TOTAL: ${fN(T.n)} carga${T.n===1?'':'s'}* · ${palTxt(T)} · ${fmtPeso(T.kg)}`);
     // resumo por CD (todas as datas)
     const porCd={}; dados.forEach(d=>d.cds.forEach(c=>{ (porCd[c.cd]=porCd[c.cd]||[]).push(...c.rows); }));
     Object.keys(porCd).sort((a,b)=>cdOrdR(a)-cdOrdR(b)).forEach(cd=>{ const t=tot(porCd[cd]); L.push(`   • ${cd}: *${t.n}*`); });
@@ -1408,7 +1437,7 @@ book=load(); useTab(book.active); render();
       L.push('');
       L.push(`📅 *${dowU(d.k)} ${fmtD(d.k)}* · ${d.t.n} carga${d.t.n===1?'':'s'} por listar`);
       d.cds.forEach(c=>{
-        L.push(`▪️ *${c.cd}*: ${c.t.n} carga${c.t.n===1?'':'s'} · ${palTxt(c.t)} · ${fN(c.t.kg)} kg · ${c.t.lojas} loja${c.t.lojas===1?'':'s'}`);
+        L.push(`▪️ *${c.cd}*: ${c.t.n} carga${c.t.n===1?'':'s'} · ${palTxt(c.t)} · ${fmtPeso(c.t.kg)} · ${c.t.lojas} loja${c.t.lojas===1?'':'s'}`);
         const sep=conta(c.rows,r=>r[C.OBS]), comp=conta(c.rows,r=>r[C.OBS2]);
         if(sep.length) L.push(`      ↳ ${sep.map(([k,v])=>`${k} ${v}`).join(' · ')}`);
         if(comp.length) L.push(`      ↳ ${comp.map(([k,v])=>`${k} ${v}`).join(' · ')}`);
@@ -1441,7 +1470,7 @@ book=load(); useTab(book.active); render();
     txt(agora(),W-P,36,font('bold',15),'#E48B00','right');
     let y=112;
     // KPIs
-    const kp=[['SEM DOCA',fN(T.n),'#D0021B','#FDECEE'],['PALLETS',(T.est?'~':'')+fN(T.pal),'#0E1B3D','#fff'],['PESO',fN(T.kg)+' kg','#0E1B3D','#fff'],['DATAS',String(dados.length),'#0E1B3D','#fff']];
+    const kp=[['SEM DOCA',fN(T.n),'#D0021B','#FDECEE'],['PALLETS',(T.est?'~':'')+fN(T.pal),'#0E1B3D','#fff'],['PESO',fmtPeso(T.kg),'#0E1B3D','#fff'],['DATAS',String(dados.length),'#0E1B3D','#fff']];
     const kw=(W-2*P-3*12)/4;
     kp.forEach(([l,v,c,bg],i)=>{ const x=P+i*(kw+12); rr(x,y,kw,76,10,i?'#C9CFDD':'#D0021B'); rr(x+1.5,y+1.5,kw-3,73,9,bg);
       txt(l,x+16,y+22,font('bold',11),i?'#5A6072':'#D0021B'); txt(v,x+16,y+52,font('bold',26),c); });
@@ -1465,7 +1494,7 @@ book=load(); useTab(book.active); render();
         txt(fit(c.cd,font('bold',15),260),P+14,y+RH/2,font('bold',15),'#0E1B3D');
         txt(fN(c.t.n),P+300,y+RH/2,font('bold',20),'#D0021B','right');
         txt((c.t.est?'~':'')+fN(c.t.pal),P+390,y+RH/2,font(c.t.est?'italic bold':'bold',15),'#16265A','right');
-        txt(fN(c.t.kg)+' kg',P+510,y+RH/2,font('bold',14),'#16265A','right');
+        txt(fmtPeso(c.t.kg),P+510,y+RH/2,font('bold',14),'#16265A','right');
         const comp=conta(c.rows,r=>r[C.OBS2]), sep=conta(c.rows,r=>r[C.OBS]);
         const l1=(comp.length?comp:sep).map(([k,v])=>`${k} ${v}`).join(' · '), l2=comp.length&&sep.length?sep.map(([k,v])=>`${k} ${v}`).join(' · '):'';
         txt(fit(l1,font('bold',12.5),W-P-14-(P+540)),P+540,y+(l2?RH/2-8:RH/2),font('bold',12.5),'#2A2F3D');
