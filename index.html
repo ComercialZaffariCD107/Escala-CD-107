@@ -47,6 +47,10 @@ input[type=file]{display:none}
 .sum .rel{margin-left:auto;align-self:center;font:600 12px Arial,sans-serif;color:#5A6072;background:transparent;border:1px dashed #B7BDCC;border-radius:6px;padding:7px 10px;cursor:pointer;min-height:34px}
 .sum .rel:hover{color:#0E1B3D;border-color:#0E1B3D;background:#F4F6FA}
 .sum .rel:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+/* última atualização da aba */
+.sum .upd{margin-left:auto;align-self:center;display:flex;flex-direction:column;align-items:flex-end;font:700 10px Arial,sans-serif;color:#6A7085;text-transform:uppercase;letter-spacing:.04em;line-height:1.3;white-space:nowrap}
+.sum .upd b{font:700 13px Arial,sans-serif;color:#0E1B3D;letter-spacing:0;text-transform:none}
+.sum .upd + .rel{margin-left:12px}
 /* diálogo do relatório */
 .rDias{display:flex;flex-wrap:wrap;gap:6px}
 .rDias label{display:flex;align-items:center;gap:6px;font-size:12.5px;border:1px solid #D0D4DE;border-radius:16px;padding:5px 10px;cursor:pointer;background:#fff;min-height:32px}
@@ -291,11 +295,6 @@ dialog.dd::backdrop{background:rgba(14,27,61,.55)}
         <label>m³ por palete · picking <input type="number" id="pM3" min="0.1" step="0.05" value="1.5"> &nbsp; kg máx. por palete <input type="number" id="pKg" min="50" step="50" value="1000"></label>
         <label>Coluna Quantidade do Metabase está em <select id="pUn"><option value="auto">automático</option><option value="un">unidades</option><option value="cx">caixas</option></select> <span id="pUnDet" style="color:#666;font-size:12px"></span></label>
         <div class="calib" id="pCal" hidden></div>
-      </fieldset>
-      <fieldset style="grid-column:1/-1">
-        <legend>Como preencher</legend>
-        <label><input type="radio" name="oModo" value="upd" checked> Atualizar as abas (mantém QTD PALLET, DOCA e o que foi digitado; adiciona cargas novas)</label>
-        <label><input type="radio" name="oModo" value="new"> Substituir o conteúdo das abas das datas carregadas</label>
       </fieldset>
     </div>
     <fieldset class="conf"><legend>Conferir cálculo de QTD PALLET</legend>
@@ -558,7 +557,20 @@ function statusNormas(){
   $('#bBase').addEventListener('click',statusNormas);
   statusNormas();
 })();
+/* "Última atualização" da aba: data e hora da última alteração no conteúdo */
+function fmtUpd(ms){
+  if(!ms) return '—';
+  const d=new Date(ms), p=n=>String(n).padStart(2,'0');
+  return `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()} às ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function mostrarUpd(){ const b=document.querySelector('#sumUpd b'); if(b) b.textContent=fmtUpd(state&&state.em); }
+const SIG=new WeakMap();                              // assinatura do conteúdo de cada aba (só em memória)
 function save(){
+  if(!window.NUVEM){                                    // sem nuvem: marca a hora quando o conteúdo da aba muda
+    const sig=JSON.stringify(serEsc(state).sections)+'|'+state.title;
+    if(SIG.has(state) && SIG.get(state)!==sig){ state.em=Date.now(); mostrarUpd(); }
+    SIG.set(state,sig);
+  }
   if(undoSnap && undoAfter===null) undoAfter=serBook(book);   // estado logo depois da ação que pode ser desfeita
   clearTimeout(saveT);
   saveT=setTimeout(()=>{ try{ localStorage.setItem(LS_KEY,JSON.stringify(book)); if(!window.NUVEM) $('#saved').textContent='Salvo'; }catch(e){ if(!window.NUVEM) $('#saved').textContent='Não salvo'; } },350);
@@ -677,6 +689,7 @@ function summary(){
     + `<span class="k">Peso total <b>${fmtPeso(kg)}</b></span>`
     + (Object.keys(pav).length?'<span class="sep"></span>':'')
     + Object.keys(pav).sort().map(k=>`<span class="k pv">${esc(k)} <b>${pav[k]}</b></span>`).join('')
+    + `<span class="upd" id="sumUpd" title="Última vez que o conteúdo desta aba foi alterado (por qualquer pessoa)">Última atualização <b>${fmtUpd(state.em)}</b></span>`
     + `<button type="button" class="rel" id="bRel" title="Relatório do que falta listar, por data de inclusão do pedido">Relatório de pendências</button>`;
   const bd=document.querySelector('#tabs .tab.on i'); if(bd) bd.textContent=n;
   marcaSemDoca(document.querySelector('#tabs .tab.on'),semDoca);
@@ -1270,7 +1283,6 @@ book=load(); useTab(book.active); render();
   $('#oUnir').addEventListener('change',()=>{ if(D.dem){ montarTipos(); montarDias(); } atualizarPrev(); });
   ['#oFat'].forEach(id=>$(id).addEventListener('change',atualizarPrev));
   $('#oTipos').addEventListener('change',atualizarPrev);
-  document.querySelectorAll('input[name=oModo]').forEach(i=>i.addEventListener('change',atualizarPrev));
 
   function atualizarPrev(){
     $('#pUnDet').textContent = (cfg().un2==='auto' && D.dem && BASE_NR && D.dem.temQtd) ? `→ detectado: ${unidadeQtd()==='un'?'unidades':'caixas'}` : '';
@@ -1290,7 +1302,7 @@ book=load(); useTab(book.active); render();
     const porPav={}; lista.forEach(x=>{ porPav[x.pav||'—']=(porPav[x.pav||'—']||0)+1; });
     const cargas=new Set(lista.map(x=>x.carga)).size;
     go.disabled=!lista.length;
-    const modo=document.querySelector('input[name=oModo]:checked').value;
+    const modo='new'; // sempre substitui o conteúdo das abas das datas carregadas
     pv.innerHTML = lista.length
       ? `<b>${lista.length.toLocaleString('pt-BR')}</b> linhas de <b>${cargas.toLocaleString('pt-BR')}</b> cargas · <b>${fmtPeso(kg)}</b>`
         + (lista.some(x=>x.loja==='M') ? ` · <b>${lista.filter(x=>x.loja==='M').length}</b> carga(s) de lojas mistas` : '') + '<br>'
@@ -1430,7 +1442,7 @@ book=load(); useTab(book.active); render();
       save(); render(); dlg.close(); toast(`Docas atualizadas em ${n} linha(s).`,true); return;
     }
     const lista=filtrar(montar()).sort(ordenar);
-    const modo=document.querySelector('input[name=oModo]:checked').value;
+    const modo='new'; // sempre substitui o conteúdo das abas das datas carregadas
     if(!D.dem.temInc){                              // arquivo sem Dtainclusaopedido: vai tudo para a aba aberta
       const r=aplicar(lista,modo); const np=preencherPal(); save(); render(); dlg.close();
       toast(modo==='new'?`Aba ${fmtD(book.active)} montada: ${lista.length} linhas.`:`${r.upd} linha(s) atualizada(s) e ${r.add} carga(s) nova(s) adicionada(s).`,true); return;
@@ -1696,11 +1708,13 @@ const COL_CFG  = 'escala_config';    // base linha de separação (em partes) + 
     const layout=(data.layout||[]).map(s=>({id:String(s.id), title:String(s.title??''), rows:(s.rows||[]).map(String)}));
     const cells={}, cm=data.cells||{};
     for(const id in cm){ const m=cm[id]||{}; cells[id]=COLS.map((_,c)=>String(m['c'+c]??'')); }
-    return {title:String(data.title??TITULO), layout, cells};
+    const em = data.em && typeof data.em.toMillis==='function' ? data.em.toMillis() : (typeof data.em==='number'?data.em:null);
+    return {title:String(data.title??TITULO), layout, cells, em};
   }
   function escalaDe(d,R){
     const vis=new Set();
-    return {title:R.title, date:d, sections:R.layout.map(s=>{
+    const em = R.em || (book.escalas[d] && book.escalas[d].em) || null;
+    return {title:R.title, date:d, em, sections:R.layout.map(s=>{
       const sec={id:s.id, title:s.title, rows:[]};
       s.rows.forEach(id=>{ if(vis.has(id)) return; vis.add(id);
         const a=(R.cells[id]||COLS.map(()=>'')).slice(); a.id=id; sec.rows.push(a); });
@@ -1722,7 +1736,7 @@ const COL_CFG  = 'escala_config';    // base linha de separação (em partes) + 
       const e=book.escalas[d], s=srv[d], ref=abas.doc(d);
       if(!e){ if(s){ delete srv[d]; enviar(ref.delete()); } return; }
       const L=repr(e);
-      if(!s){ srv[d]=L; enviar(ref.set(docOf(d,L))); return; }
+      if(!s){ srv[d]=L; e.em=Date.now(); if(d===book.active) mostrarUpd(); enviar(ref.set(docOf(d,L))); return; }
       const up={}; let n=0;
       if(L.title!==s.title){ up.title=L.title; n++; }
       for(const id in L.cells){
@@ -1734,6 +1748,7 @@ const COL_CFG  = 'escala_config';    // base linha de separação (em partes) + 
       const lay=JSON.stringify(L.layout)!==JSON.stringify(s.layout);
       if(!n && !lay) return;
       up.em=FV.serverTimestamp();
+      e.em=Date.now(); if(d===book.active) mostrarUpd();
       const base=s.layout; srv[d]=L;
       if(!lay) enviar(ref.update(up));
       else trocarLayout(d,ref,base,L.layout,up);
