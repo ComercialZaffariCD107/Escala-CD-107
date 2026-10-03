@@ -282,6 +282,7 @@ tr.over .ocBar i{background:#D0021B}
   <button type="button" id="bSec">+ Seção</button>
   <button type="button" id="bNew">Limpar aba</button>
   <button type="button" id="bCal">Calendário 2026</button>
+  <button type="button" id="bLD">Lojas × Docas</button>
   <button type="button" id="bPrint" class="pri">Imprimir</button>
   <input type="file" id="fImp" accept=".xlsx">
 </div>
@@ -1037,11 +1038,125 @@ function desenharCalendario(esc_){
   });
   return cv;
 }
-$('#bCal').addEventListener('click',()=>{
-  $('#calImg').src=desenharCalendario(2).toDataURL('image/png');
+/* ============ LOJAS × DOCAS: visualizar e baixar ============ */
+/* Para editar: [loja, cidade, doca] */
+const LOJAS_DOCAS=[
+  [1, "PASSO FUNDO", 57],
+  [2, "PASSO FUNDO", 56],
+  [5, "PASSO FUNDO", 60],
+  [8, "PASSO FUNDO", 58],
+  [9, "PASSO FUNDO", 59],
+  [12, "IJUÍ", 63],
+  [16, "SANTA CRUZ", 50],
+  [18, "CRUZ ALTA", 62],
+  [19, "MARAU", 55],
+  [20, "PASSO FUNDO", 58],
+  [21, "IJUÍ", 63],
+  [22, "PORTO ALEGRE", 37],
+  [23, "CAXIAS DO SUL", 65],
+  [24, "SANTA CRUZ", 51],
+  [26, "GUAÍBA", 37],
+  [27, "LAGOA VERMELHA", 67],
+  [28, "CACHOEIRA DO SUL", 50],
+  [30, "LAGES", 67],
+  [31, "TRAMANDAÍ", 34],
+  [32, "SÃO GABRIEL", 45],
+  [33, "URUGUAIANA", 44],
+  [34, "ESTEIO", 38],
+  [35, "CAXIAS DO SUL", 65],
+  [36, "TORRES", 34],
+  [37, "MARAU", 56],
+  [38, "SOLEDADE", 54],
+  [39, "PORTO ALEGRE", 36],
+  [40, "SANTA MARIA", 49],
+  [41, "ALEGRETE", 44],
+  [42, "ALVORADA", 40],
+  [43, "VENÂNCIO AIRES", 51],
+  [44, "SÃO BORJA", 45],
+  [45, "CRUZ ALTA", 62],
+  [46, "SARANDI", 59],
+  [47, "SÃO LEOPOLDO", 39],
+  [48, "NOVO HAMBURGO", 39],
+  [49, "PORTO ALEGRE", 36],
+  [50, "PASSO FUNDO", 55],
+  [51, "CAXIAS DO SUL", 66],
+  [52, "CARAZINHO", 54],
+  [53, "SANTA MARIA", 49],
+  [54, "CANOAS", 35],
+  [55, "PELOTAS", 47],
+  [56, "LAJEADO", 52],
+  [57, "IMBÉ", 33],
+  [58, "ERECHIM", 60],
+  [59, "PELOTAS", 46],
+  [60, "SANTO ÂNGELO", 64],
+  [62, "NOVO HAMBURGO", 38],
+  [63, "VIAMÃO", 41],
+  [64, "RIO GRANDE", 47],
+  [65, "RIO GRANDE", 46],
+  [70, "VACARIA", 66],
+  [75, "CANOAS", 35],
+  [80, "PASSO FUNDO", 57],
+  [85, "GRAVATAÍ", 40],
+  [90, "SANTA ROSA", 64],
+  [95, "CAPÃO DA CANOA", 33]
+];
+function desenharLojasDocas(esc_){
+  const lista=[...LOJAS_DOCAS].sort((a,b)=>a[0]-b[0]);
+  const NC=3, por=Math.ceil(lista.length/NC);
+  const cL=58, cC=170, cD=62, BW=cL+cC+cD, GX=22, PAD=18, TT=58, HH=26, RH=24;
+  const W=PAD*2+BW*NC+GX*(NC-1), H=TT+14+HH+RH*por+PAD+18;
+  const cv=document.createElement('canvas'); cv.width=Math.round(W*esc_); cv.height=Math.round(H*esc_);
+  const g=cv.getContext('2d'); g.scale(esc_,esc_);
+  g.fillStyle='#fff'; g.fillRect(0,0,W,H);
+  g.fillStyle='#0E1B3D'; g.fillRect(0,0,W,TT); g.fillStyle='#E48B00'; g.fillRect(0,TT,W,4);
+  g.textBaseline='middle'; g.textAlign='left'; g.fillStyle='#fff'; g.font='bold 22px Arial,sans-serif';
+  g.fillText('LOJAS × DOCAS',PAD,TT/2-1);
+  const tw=g.measureText('LOJAS × DOCAS').width; g.font='15px Arial,sans-serif'; g.fillStyle='#C3CBE2';
+  g.fillText('·  CD NOVA SANTA RITA',PAD+tw+12,TT/2);
+  g.textAlign='right'; g.font='12px Arial,sans-serif'; g.fillText(`${lista.length} lojas`,W-PAD,TT/2);
+  const y0=TT+14;
+  for(let c=0;c<NC;c++){
+    const x0=PAD+c*(BW+GX), parte=lista.slice(c*por,(c+1)*por);
+    g.fillStyle='#16265A'; g.fillRect(x0,y0,BW,HH);
+    g.fillStyle='#fff'; g.font='bold 11.5px Arial,sans-serif';
+    g.textAlign='center'; g.fillText('LOJA',x0+cL/2,y0+HH/2+1);
+    g.textAlign='left'; g.fillText('CIDADE',x0+cL+8,y0+HH/2+1);
+    g.textAlign='center'; g.fillText('DOCA',x0+cL+cC+cD/2,y0+HH/2+1);
+    parte.forEach(([lj,cid,dc],i)=>{
+      const y=y0+HH+i*RH;
+      g.fillStyle=i%2?'#F4F6FA':'#fff'; g.fillRect(x0,y,BW,RH);
+      g.fillStyle='#FFF1D6'; g.fillRect(x0+cL+cC,y,cD,RH);
+      g.fillStyle='#0E1B3D'; g.font='bold 14px Arial,sans-serif'; g.textAlign='center'; g.fillText(String(lj).padStart(2,'0'),x0+cL/2,y+RH/2+1);
+      g.fillStyle='#1A2033'; g.font='13px Arial,sans-serif'; g.textAlign='left'; g.fillText(String(cid),x0+cL+8,y+RH/2+1);
+      g.fillStyle='#0E1B3D'; g.font='bold 15px Arial,sans-serif'; g.textAlign='center'; g.fillText(String(dc),x0+cL+cC+cD/2,y+RH/2+1);
+      g.strokeStyle='#E1E4EC'; g.lineWidth=1; g.beginPath(); g.moveTo(x0,y+RH); g.lineTo(x0+BW,y+RH); g.stroke();
+    });
+    g.strokeStyle='#C9CDD8'; g.beginPath(); [cL,cL+cC].forEach(dx=>{ g.moveTo(x0+dx,y0+HH); g.lineTo(x0+dx,y0+HH+parte.length*RH); }); g.stroke();
+    g.strokeStyle='#0E1B3D'; g.lineWidth=1.5; g.strokeRect(x0,y0,BW,HH+parte.length*RH);
+  }
+  g.fillStyle='#6A7085'; g.font='11px Arial,sans-serif'; g.textAlign='left';
+  g.fillText('Comercial Zaffari · CD-107 Nova Santa Rita',PAD,H-PAD/2-4);
+  return cv;
+}
+
+/* janela de imagem (calendário e lojas × docas) */
+const IMGS={
+  cal:{t:'Calendário de lojas 2026', p:'Visualize ou baixe a imagem do calendário', arq:'Calendario-lojas-2026.png', fn:desenharCalendario, w:620},
+  ld:{t:'Lojas × Docas', p:'Visualize ou baixe a tabela de docas por loja', arq:'Lojas-x-Docas-CD107.png', fn:desenharLojasDocas, w:900}
+};
+let imgAtual='cal';
+function abrirImg(k){
+  const o=IMGS[k]; imgAtual=k;
+  $('#dCalT').textContent=o.t; $('#dCal .dd-h p').textContent=o.p;
+  $('#calImg').alt=o.t; $('#calImg').style.maxWidth=o.w+'px';
+  $('#dCal').style.width=`min(${o.w+60}px,calc(100% - 24px))`;
+  $('#calDown').setAttribute('download',o.arq);
+  $('#calImg').src=o.fn(2).toDataURL('image/png');
   $('#dCal').showModal();
-});
-$('#calDown').addEventListener('click',e=>{ e.currentTarget.href=desenharCalendario(4).toDataURL('image/png'); });
+}
+$('#bCal').addEventListener('click',()=>abrirImg('cal'));
+$('#bLD').addEventListener('click',()=>abrirImg('ld'));
+$('#calDown').addEventListener('click',e=>{ e.currentTarget.href=IMGS[imgAtual].fn(4).toDataURL('image/png'); });
 $('#calClose').onclick=$('#calOk').onclick=()=>$('#dCal').close();
 
 /* ============ OCUPAÇÃO POR DOCA (aba atual) ============ */
