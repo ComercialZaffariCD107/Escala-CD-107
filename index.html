@@ -194,13 +194,44 @@ dialog.dd::backdrop{background:rgba(14,27,61,.55)}
 .pp .ptl .pdiv{width:1px;align-self:stretch;background:#C9CDD8}
 .pp .date{font-size:18px;padding:4px 14px}
 .pp table.esc{min-width:0}
-.pp .esc td{height:26px;padding:0 3px;font-size:11px}
+.pp .esc td{height:var(--rh,26px);padding:0 3px;font-size:var(--fs,11px)}
+.pp .esc tr.row td{height:var(--rh,26px)}
 .pp .esc td.est{font-style:italic;color:#6A7085}
-.pp .esc tr.sec td{height:34px;font-size:16px}
+.pp .esc tr.sec td{height:var(--sh,34px);font-size:var(--sf,16px)}
 .pp .esc thead tr.cols th{height:36px;font-size:10.5px}
 .pp .esc thead tr.pcp th{height:26px;font-size:15px}
 .pp .ptot{display:flex;gap:18px;font:12px Arial,sans-serif;margin-top:6px}
 .pp .ptot b{font-size:13px}
+.pp .pfit{color:#6A7085;font-size:10.5px}
+/* busca rápida */
+.bsc{display:flex;align-items:center;gap:6px;background:#16265A;border:1px solid #3A4A82;border-radius:6px;padding:0 6px 0 10px;min-height:34px}
+.bsc:focus-within{border-color:var(--amber)}
+.bsc input{background:transparent;border:0;color:#fff;font:13px Arial,sans-serif;width:130px;outline:0;padding:7px 0}
+.bsc input::placeholder{color:#9AA6CC}
+.bsc .bn{font:700 11.5px Arial,sans-serif;color:#C3CBE2;min-width:34px;text-align:right;white-space:nowrap}
+.bsc .bn.z{color:#FF8A8A}
+.bsc button{background:transparent!important;border:0!important;padding:4px 6px!important;color:#C3CBE2!important;font-size:14px!important;min-height:28px}
+.bsc button:hover{color:#fff!important}
+.esc td.achou input{box-shadow:inset 0 0 0 2px var(--amber);background:#FFF6E0}
+/* o que mudou */
+.mdK{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.mdK button{font:600 13px Arial,sans-serif;border:1px solid #D0D4DE;background:#fff;border-radius:8px;padding:8px 12px;cursor:pointer;min-height:40px;color:#1A2033}
+.mdK button b{font-size:16px;margin-left:6px}
+.mdK button.on{border-color:#0E1B3D;background:#0E1B3D;color:#fff}
+.mdK .e b{color:#1E9E5A}.mdK .s b{color:#D0021B}.mdK .m b{color:#B36A00}
+.mdK button.on b{color:#fff}
+table.md{width:100%;border-collapse:collapse;font:13px Arial,sans-serif}
+table.md th{background:#F4F6FA;color:#5A6072;font-size:11.5px;text-align:left;padding:7px 8px;position:sticky;top:0}
+table.md td{padding:7px 8px;border-bottom:1px solid #E1E4EC;vertical-align:top}
+table.md td.c{font-weight:700;color:#0E1B3D;white-space:nowrap}
+table.md .ch{display:inline-block;margin:0 10px 2px 0;white-space:nowrap}
+table.md .ch s{color:#9AA0B0}
+table.md .ch b{color:#0E1B3D}
+table.md tr.go{cursor:pointer}
+table.md tr.go:hover td{background:#FFF6E0}
+.mdTag{display:inline-block;font:700 10.5px Arial,sans-serif;border-radius:4px;padding:2px 6px}
+.mdTag.e{background:#E3F4EA;color:#17733F}.mdTag.s{background:#FDECEE;color:#B0001A}.mdTag.m{background:#FFF1D6;color:#8A5200}
+.mdVaz{color:#6A7085;padding:18px 4px}
 .pp .pfoot{break-inside:avoid;page-break-inside:avoid}
 .pcal{margin-top:8px;border:1px solid #C9CDD8;border-radius:4px;font:9px/1.25 Arial,sans-serif;color:#1A2033}
 .pcal .ch{display:flex;align-items:center;gap:10px;padding:3px 8px;background:#0E1B3D;color:#fff;font-weight:700;font-size:9.5px;letter-spacing:.3px}
@@ -227,7 +258,7 @@ dialog.dd::backdrop{background:rgba(14,27,61,.55)}
 .calBox img{width:100%;max-width:620px;height:auto;display:block;background:#fff;box-shadow:0 1px 4px rgba(14,27,61,.15);image-rendering:auto}
 .pOrd input{width:18px;height:18px;accent-color:var(--xl)}
 /* painel de ocupação por doca */
-.sum .upd + .rel + .rel{margin-left:8px}
+.sum .upd + .rel + .rel, .sum .upd + .rel + .rel + .rel{margin-left:8px}
 .ocLim{display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-size:13px}
 .ocLim input{width:80px;font:13px Arial,sans-serif;padding:6px 8px;border:1px solid #B7BDCC;border-radius:6px}
 .ocRes{font-size:13px;color:#5A6072}
@@ -275,6 +306,7 @@ tr.over .ocBar i{background:#D0021B}
   <span class="ldiv" aria-hidden="true"></span>
   <b>Escala de Entrega · PCP</b>
   <span class="saved" id="saved" aria-live="polite"></span>
+  <div class="bsc" role="search"><input id="busca" type="search" placeholder="Buscar carga ou loja" aria-label="Buscar carga ou loja em todas as abas" autocomplete="off"><span class="bn" id="buscaN" aria-live="polite"></span><button type="button" id="buscaAnt" title="Anterior (Shift+Enter)" aria-label="Resultado anterior">▲</button><button type="button" id="buscaProx" title="Próximo (Enter)" aria-label="Próximo resultado">▼</button></div>
   <button type="button" id="bBase">Bases de dados</button>
   <button type="button" id="bLoad" class="load">Carregar dados</button>
   <button type="button" id="bImp">Importar Excel</button>
@@ -406,6 +438,11 @@ tr.over .ocBar i{background:#D0021B}
   <div class="dd-h"><div><h2 id="dCalT">Calendário de lojas 2026</h2><p>Visualize ou baixe a imagem do calendário</p></div><button type="button" class="xc" id="calClose" aria-label="Fechar">×</button></div>
   <div class="dd-b"><div class="calBox"><img id="calImg" alt="Calendário de lojas 2026"></div></div>
   <div class="dd-f"><button type="button" id="calOk">Fechar</button><button type="button" id="calPrint">Imprimir</button><a class="go" id="calDown" download="Calendario-lojas-2026.png" style="font:700 13px Arial,sans-serif;border-radius:6px;padding:10px 16px;background:#217346;color:#fff;text-decoration:none;display:inline-flex;align-items:center;min-height:40px;box-sizing:border-box">Baixar imagem</a></div>
+</dialog>
+<dialog class="dd" id="dMud" aria-labelledby="dMudT" style="width:min(860px,calc(100% - 24px))">
+  <div class="dd-h"><div><h2 id="dMudT">O que mudou</h2><p id="mdSub">Comparação com a escala antes da última carga de dados</p></div><button type="button" class="xc" id="mdClose" aria-label="Fechar">×</button></div>
+  <div class="dd-b"><div class="mdK" id="mdK" role="tablist"></div><div style="overflow:auto"><div id="mdOut"></div></div></div>
+  <div class="dd-f"><button type="button" class="go" id="mdOk">Fechar</button></div>
 </dialog>
 <div id="printArea"></div>
 
@@ -765,7 +802,8 @@ function summary(){
     + Object.keys(pav).sort().map(k=>`<span class="k pv">${esc(k)} <b>${pav[k]}</b></span>`).join('')
     + `<span class="upd" id="sumUpd" title="Última vez que o conteúdo desta aba foi alterado (por qualquer pessoa)">Última atualização <b>${fmtUpd(state.em)}</b></span>`
     + `<button type="button" class="rel" id="bRel" title="Relatório do que falta listar, por data de inclusão do pedido">Relatório de pendências</button>`
-    + `<button type="button" class="rel" id="bOcup" title="Cargas, paletes e peso por doca nesta aba">Ocupação por doca</button>`;
+    + `<button type="button" class="rel" id="bOcup" title="Cargas, paletes e peso por doca nesta aba">Ocupação por doca</button>`
+    + (window.temMudancas&&temMudancas()?`<button type="button" class="rel" id="bMud" title="O que mudou na última carga de dados">O que mudou</button>`:'');
   const bd=document.querySelector('#tabs .tab.on i'); if(bd) bd.textContent=n;
   marcaSemDoca(document.querySelector('#tabs .tab.on'),semDoca);
 }
@@ -979,13 +1017,146 @@ $('#pGo').addEventListener('click',()=>{
   try{ localStorage.setItem(PSEL_KEY,JSON.stringify(idx.map(i=>state.sections[i].title))); }catch(e){}
   if(window.NUVEM) NUVEM.pref('psel',idx.map(i=>state.sections[i].title));
   const ord=$('#pOrd').checked; try{ localStorage.setItem(PORD_KEY,ord?'1':'0'); }catch(e){}
-  montarImpressao(idx, ord); $('#dPrint').close();
+  montarImpressao(idx, ord); ajustarFolhas(); $('#dPrint').close();
   document.body.classList.add('printing');
   setTimeout(()=>window.print(),50);
 });
 window.addEventListener('afterprint',()=>{ document.body.classList.remove('printing'); $('#printArea').innerHTML=''; });
 $('#pClose').onclick=$('#pCancel').onclick=()=>$('#dPrint').close();
 $('#bPrint').addEventListener('click',abrirImpressao);
+
+/* ============ IMPRESSÃO: ajuste para caber ============
+   Mede cada CD na largura da folha. Se passar da página por poucas linhas, diminui a altura e a
+   fonte das linhas até caber no número inteiro de folhas (sem descer de 18px / 9px). */
+function ajustarFolhas(){
+  const pa=$('#printArea'), MM=96/25.4, PAGE=194*MM-4;               // A4 deitada, margem 8mm
+  const st=pa.style.cssText; pa.style.cssText='display:block;position:absolute;left:-99999px;top:0;width:281mm;visibility:hidden';
+  const H=el=>el?el.getBoundingClientRect().height:0;
+  // simula a quebra de páginas: cabeçalho da tabela repete em cada folha, linhas não quebram, rodapé vai inteiro
+  const simular=(m,rh)=>{ const k=rh/26, sh=Math.max(22,34*k); let pag=1, y=m.head+m.thead;
+    for(const r of m.rows){ const h=r.sec?r.h-(34-sh):r.h-(26-rh); if(y+h>PAGE){ pag++; y=m.thead; } y+=h; }
+    if(y+m.foot>PAGE) pag++; return pag; };
+  pa.querySelectorAll('section.pp').forEach(sec=>{
+    const m={head:H(sec.querySelector('.head'))+10, thead:H(sec.querySelector('thead')), foot:H(sec.querySelector('.pfoot'))+6,
+      rows:[...sec.querySelectorAll('.esc tbody tr')].map(tr=>({sec:tr.classList.contains('sec'),h:H(tr)}))};
+    const p0=simular(m,26); if(p0<2) return;
+    let rh=0; for(let v=25.75; v>=20; v-=.25){ if(simular(m,v)<p0){ rh=v; break; } }
+    if(!rh) return;                                                   // sobra grande: deixa normal
+    const k=rh/26;
+    sec.style.setProperty('--rh',rh.toFixed(2)+'px');
+    sec.style.setProperty('--fs',Math.max(9,11*Math.min(1,k+.12)).toFixed(1)+'px');
+    sec.style.setProperty('--sh',Math.max(22,34*k).toFixed(1)+'px');
+    sec.style.setProperty('--sf',Math.max(12,16*k).toFixed(1)+'px');
+    const pt=sec.querySelector('.ptot'), n=p0-1; if(pt) pt.insertAdjacentHTML('beforeend',`<span class="pfit">ajustado para ${n} folha${n>1?'s':''}</span>`);
+  });
+  pa.style.cssText=st;
+}
+
+/* ============ O QUE MUDOU desde a última carga de dados ============ */
+const MUD_KEY='cd107_escala_mud';
+let MUD=null; try{ MUD=JSON.parse(localStorage.getItem(MUD_KEY)||'null'); }catch(e){}
+function temMudancas(){ return !!(MUD && (MUD.e.length||MUD.s.length||MUD.m.length)); }
+function fotoCargas(){
+  const m={};
+  Object.keys(book.escalas).sort().forEach(k=>book.escalas[k].sections.forEach(s=>s.rows.forEach(r=>{
+    const c=parseInt(String(r[C.CARGA]??'').replace(/\D/g,''),10); if(!c) return;
+    const o=m[c]||(m[c]={c,aba:k,cd:s.title,lojas:[],docas:[],kg:0,pal:0,est:false,tp:''});
+    const lj=String(r[C.LOJAS]||r[C.LOJA]||'').trim(); if(lj&&!o.lojas.includes(lj)) o.lojas.push(lj);
+    const d=String(r[C.DOCA]??'').trim(); if(d&&!o.docas.includes(d)) o.docas.push(d);
+    o.kg+=parsePeso(r[C.PESO]); o.pal+=num(r[C.PAL]); if(isEst(r[C.PAL])) o.est=true;
+    if(!o.tp) o.tp=String(r[C.OBS]||'').trim();
+  })));
+  return m;
+}
+function registrarMudancas(antes,origem){
+  const dep=fotoCargas(), e=[], sa=[], mu=[];
+  if(!Object.keys(antes).length) return;                         // escala vazia antes: nada para comparar
+  const dc=o=>o.docas.slice().sort((a,b)=>(+a||1e9)-(+b||1e9)).join(', ');
+  const pl=o=>o.pal?(o.est?'~':'')+Math.round(o.pal):'';
+  Object.values(dep).forEach(o=>{
+    const a=antes[o.c]; if(!a){ e.push(o); return; }
+    const ch=[];
+    if(dc(a)!==dc(o)) ch.push(['Doca',dc(a)||'sem doca',dc(o)||'sem doca']);
+    if(Math.abs(a.kg-o.kg)>Math.max(5,a.kg*.005)) ch.push(['Peso',fmtPeso(a.kg),fmtPeso(o.kg)]);
+    if(Math.round(a.pal)!==Math.round(o.pal)) ch.push(['Paletes',pl(a)||'—',pl(o)||'—']);
+    if(a.aba!==o.aba) ch.push(['Aba',fmtD(a.aba),fmtD(o.aba)]);
+    if(ch.length) mu.push(Object.assign({},o,{ch}));
+  });
+  Object.values(antes).forEach(o=>{ if(!dep[o.c]) sa.push(o); });
+  const d=new Date(), p2=n=>String(n).padStart(2,'0');
+  MUD={quando:`${p2(d.getDate())}/${p2(d.getMonth()+1)} ${p2(d.getHours())}:${p2(d.getMinutes())}`,origem,e,s:sa,m:mu};
+  try{ localStorage.setItem(MUD_KEY,JSON.stringify(MUD)); }catch(err){}
+  summary();
+  if(temMudancas()) setTimeout(()=>abrirMudancas(),350);
+}
+let mdAba='';
+function abrirMudancas(){
+  if(!MUD) return;
+  if(!mdAba) mdAba=MUD.m.length?'m':MUD.e.length?'e':'s';
+  $('#mdSub').textContent=`Carga de dados de ${MUD.quando} (${MUD.origem}) comparada com a escala de antes`;
+  const k=[['e','Entraram',MUD.e],['s','Saíram',MUD.s],['m','Mudaram',MUD.m]];
+  $('#mdK').innerHTML=k.map(([id,t,l])=>`<button type="button" role="tab" class="${id}${mdAba===id?' on':''}" data-md="${id}" aria-selected="${mdAba===id}">${t}<b>${l.length.toLocaleString('pt-BR')}</b></button>`).join('');
+  const lst=MUD[mdAba]||[], lojas=o=>esc(o.lojas.slice(0,4).join(', ')+(o.lojas.length>4?` +${o.lojas.length-4}`:''));
+  const ord=lst.slice().sort((a,b)=>a.aba.localeCompare(b.aba)||a.c-b.c);
+  $('#mdOut').innerHTML = !ord.length ? `<div class="mdVaz">Nenhuma carga ${mdAba==='e'?'entrou':mdAba==='s'?'saiu':'mudou'}.</div>`
+    : `<table class="md"><thead><tr><th>CARGA</th><th>ABA</th><th>LOJAS</th><th>${mdAba==='m'?'O QUE MUDOU':'DOCA · PESO · PALETES'}</th></tr></thead><tbody>`
+      + ord.map(o=>`<tr class="${mdAba!=='s'?'go':''}" data-c="${o.c}"><td class="c">${o.c}</td><td>${fmtD(o.aba)}<br><small style="color:#6A7085">${esc(o.cd||'')}</small></td><td>${lojas(o)}<br><small style="color:#6A7085">${esc(o.tp||'')}</small></td><td>`
+        + (mdAba==='m' ? o.ch.map(([n,a,b])=>`<span class="ch">${n}: <s>${esc(a)}</s> → <b>${esc(b)}</b></span>`).join('')
+           : `Doca <b>${esc(o.docas.join(', ')||'—')}</b> · ${fmtPeso(o.kg)} · ${o.pal?(o.est?'~':'')+Math.round(o.pal):'—'} pal.`)
+        + `</td></tr>`).join('') + `</tbody></table>`;
+  if(!$('#dMud').open) $('#dMud').showModal();
+}
+$('#mdK').addEventListener('click',e=>{ const b=e.target.closest('[data-md]'); if(!b) return; mdAba=b.dataset.md; abrirMudancas(); });
+$('#mdOut').addEventListener('click',e=>{ const tr=e.target.closest('tr.go'); if(!tr) return; $('#dMud').close(); irParaCarga(+tr.dataset.c); });
+$('#mdClose').onclick=$('#mdOk').onclick=()=>{ $('#dMud').close(); mdAba=''; };
+
+/* ============ BUSCA RÁPIDA (todas as abas) ============ */
+const nrmB=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+let bRes=[], bPos=-1, bQ='';
+function buscarTudo(q){
+  const t=q.trim(); if(!t) return [];
+  const so=t.replace(/[\s.]/g,''), dig=so.replace(/\D/g,''), numerico=/^\d+$/.test(so);
+  const mLoja=/^(loja|lj|l)\s*0*(\d{1,3})$/i.exec(t);
+  const loja = mLoja ? +mLoja[2] : (numerico && dig.length<=3 ? +dig : null);
+  const carga = numerico && dig.length>=4 ? dig : null, txt=nrmB(t), out=[];
+  Object.keys(book.escalas).sort().forEach(k=>book.escalas[k].sections.forEach((s,si)=>s.rows.forEach((r,ri)=>{
+    const cg=String(r[C.CARGA]??'').replace(/\D/g,''); let ok=false, col=C.CARGA;
+    if(carga) ok=cg.includes(carga);
+    else if(loja!==null){ ok=parseInt(String(r[C.LOJA]??'').replace(/\D/g,''),10)===loja; col=C.LOJAS; }
+    else { ok=nrmB(r[C.LOJAS]).includes(txt)||nrmB(r[C.OBS]).includes(txt)||nrmB(r[C.OBS2]).includes(txt); col=C.LOJAS; }
+    if(ok) out.push({k,si,ri,col});
+  })));
+  // aba aberta primeiro, depois as outras em ordem de data
+  return out.sort((a,b)=>(a.k===book.active?0:1)-(b.k===book.active?0:1)||a.k.localeCompare(b.k));
+}
+function mostrarAchado(x){
+  if(x.k!==book.active){ useTab(x.k); save(); render(); }
+  document.querySelectorAll('.esc td.achou').forEach(td=>td.classList.remove('achou'));
+  const el=document.querySelector(`input[data-s="${x.si}"][data-i="${x.ri}"][data-c="${x.col}"]`); if(!el) return;
+  const top=el.getBoundingClientRect().top+scrollY-(parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--barH'))||56)-$('#sum').offsetHeight-60;
+  scrollTo({top,behavior:'smooth'});
+  const tr=el.closest('tr'); tr.classList.remove('flash'); void tr.offsetWidth; tr.classList.add('flash');
+  el.closest('td').classList.add('achou');
+}
+function passoBusca(d){
+  const q=$('#busca').value;
+  if(q!==bQ){ bQ=q; bRes=buscarTudo(q); bPos=-1; }
+  const n=$('#buscaN');
+  if(!q.trim()){ n.textContent=''; n.classList.remove('z'); return; }
+  if(!bRes.length){ n.textContent='0'; n.classList.add('z'); return; }
+  n.classList.remove('z');
+  bPos=(bPos+d+bRes.length)%bRes.length; n.textContent=`${bPos+1}/${bRes.length}`;
+  mostrarAchado(bRes[bPos]);
+}
+function irParaCarga(c){ const r=buscarTudo(String(c)).filter(x=>String(book.escalas[x.k].sections[x.si].rows[x.ri][C.CARGA]).replace(/\D/g,'')===String(c)); if(r.length) mostrarAchado(r[0]); }
+$('#busca').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){ e.preventDefault(); passoBusca(e.shiftKey?-1:1); }
+  else if(e.key==='Escape'){ $('#busca').value=''; bQ=''; bRes=[]; $('#buscaN').textContent=''; document.querySelectorAll('.esc td.achou').forEach(td=>td.classList.remove('achou')); }
+});
+$('#busca').addEventListener('input',()=>{ const q=$('#busca').value; bQ=q; bRes=buscarTudo(q); bPos=-1; const n=$('#buscaN');
+  n.textContent=q.trim()?String(bRes.length):''; n.classList.toggle('z',!!q.trim()&&!bRes.length); });
+$('#buscaProx').onclick=()=>passoBusca(1); $('#buscaAnt').onclick=()=>passoBusca(-1);
+document.addEventListener('keydown',e=>{ if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='f' && !document.querySelector('dialog[open]')){ e.preventDefault(); $('#busca').focus(); $('#busca').select(); } });
 
 /* ============ CALENDÁRIO 2026: visualizar e baixar ============ */
 /* Dias pintados no calendário que não têm loja na lista: [mês, dia, cor] */
@@ -1819,16 +1990,16 @@ book=load(); useTab(book.active); render();
     return n;
   }
   $('#dGo').addEventListener('click',()=>{
-    snapshot();
+    snapshot(); const antes=fotoCargas();
     if(!D.dem){                                     // só docas: atualiza todas as abas
       let n=0;
       linhasTodas(r=>{ const c=D.car.map.get(toInt(r[C.CARGA])); if(!c) return; if(c.box) r[C.DOCA]=c.box; n++; });
-      save(); render(); dlg.close(); toast(`Docas atualizadas em ${n} linha(s).`,true); return;
+      save(); render(); dlg.close(); toast(`Docas atualizadas em ${n} linha(s).`,true); registrarMudancas(antes,'Planilha de docas'); return;
     }
     const lista=filtrar(montar()).sort(ordenar);
     const modo='new'; // sempre substitui o conteúdo das abas das datas carregadas
     if(!D.dem.temInc){                              // arquivo sem Dtainclusaopedido: vai tudo para a aba aberta
-      const r=aplicar(lista,modo); const np=preencherPal(); save(); render(); dlg.close();
+      const r=aplicar(lista,modo); const np=preencherPal(); save(); render(); dlg.close(); registrarMudancas(antes,'Metabase');
       toast(modo==='new'?`Aba ${fmtD(book.active)} montada: ${lista.length} linhas.`:`${r.upd} linha(s) atualizada(s) e ${r.add} carga(s) nova(s) adicionada(s).`,true); return;
     }
     // uma aba por data de inclusão do pedido
@@ -1841,7 +2012,7 @@ book=load(); useTab(book.active); render();
     });
     useTab(grupos.has(aberta)?aberta:ks[ks.length-1]);
     const np=preencherPal();
-    save(); render(); dlg.close();
+    save(); render(); dlg.close(); registrarMudancas(antes,'Metabase'+(D.car?' + docas':''));
     toast(`${ks.length} aba(s) preenchida(s)${criadas?` (${criadas} nova(s))`:''}: ${add} carga(s) adicionada(s)${upd?`, ${upd} atualizada(s)`:''} · QTD PALLET em ${np} linha(s).`,true);
   });
 })();
@@ -1981,7 +2152,7 @@ book=load(); useTab(book.active); render();
     if(vista==='img'){ const b=$('#rImgBox'); b.innerHTML=''; b.appendChild(imagem(esc2)); }
   }
   function abrirRel(){ sel=null; atualizar(); $('#dRel').showModal(); }
-  $('#sum').addEventListener('click',e=>{ if(e.target.closest('#bRel')) abrirRel(); if(e.target.closest('#bOcup')) abrirOcup(); });
+  $('#sum').addEventListener('click',e=>{ if(e.target.closest('#bRel')) abrirRel(); if(e.target.closest('#bOcup')) abrirOcup(); if(e.target.closest('#bMud')) abrirMudancas(); });
   $('#rClose').onclick=()=>$('#dRel').close();
   $('#rDias').addEventListener('change',e=>{ const i=e.target; if(!i.value) return; i.checked?sel.add(i.value):sel.delete(i.value); atualizar(); });
   document.querySelector('#dRel .rTabs').addEventListener('click',e=>{
