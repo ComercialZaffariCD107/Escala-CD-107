@@ -2055,7 +2055,6 @@ book=load(); useTab(book.active); render();
     }).filter(d=>d.t.n);
   }
   const escolhidos = dados => dados.filter(d=>!sel || sel.has(d.k));
-  const palTxt = t => `${t.est?'~':''}${fN(t.pal)} pallet${t.pal===1?'':'s'}`;
 
   function texto(dados){
     const L=[], T=tot(dados.flatMap(d=>d.cds.flatMap(c=>c.rows)));
@@ -2063,7 +2062,7 @@ book=load(); useTab(book.active); render();
     L.push(`_${agora()} · cargas sem doca_`);
     L.push('');
     if(!dados.length){ L.push('✅ Nenhuma carga pendente de listagem.'); return L.join('\n'); }
-    L.push(`🔴 *TOTAL: ${fN(T.n)} carga${T.n===1?'':'s'}* · ${palTxt(T)} · ${fmtPeso(T.kg)}`);
+    L.push(`🔴 *TOTAL: ${fN(T.n)} carga${T.n===1?'':'s'}* · ${fmtPeso(T.kg)}`);
     // resumo por CD (todas as datas)
     const porCd={}; dados.forEach(d=>d.cds.forEach(c=>{ (porCd[c.cd]=porCd[c.cd]||[]).push(...c.rows); }));
     Object.keys(porCd).sort((a,b)=>cdOrdR(a)-cdOrdR(b)).forEach(cd=>{ const t=tot(porCd[cd]); L.push(`   • ${cd}: *${t.n}*`); });
@@ -2071,7 +2070,7 @@ book=load(); useTab(book.active); render();
       L.push('');
       L.push(`📅 *${dowU(d.k)} ${fmtD(d.k)}* · ${d.t.n} carga${d.t.n===1?'':'s'} por listar`);
       d.cds.forEach(c=>{
-        L.push(`▪️ *${c.cd}*: ${c.t.n} carga${c.t.n===1?'':'s'} · ${palTxt(c.t)} · ${fmtPeso(c.t.kg)} · ${c.t.lojas} loja${c.t.lojas===1?'':'s'}`);
+        L.push(`▪️ *${c.cd}*: ${c.t.n} carga${c.t.n===1?'':'s'} · ${fmtPeso(c.t.kg)} · ${c.t.lojas} loja${c.t.lojas===1?'':'s'}`);
         const sep=conta(c.rows,r=>r[C.OBS]), comp=conta(c.rows,r=>r[C.OBS2]);
         if(sep.length) L.push(`      ↳ ${sep.map(([k,v])=>`${k} ${v}`).join(' · ')}`);
         if(comp.length) L.push(`      ↳ ${comp.map(([k,v])=>`${k} ${v}`).join(' · ')}`);
@@ -2104,14 +2103,14 @@ book=load(); useTab(book.active); render();
     txt(agora(),W-P,36,font('bold',15),'#E48B00','right');
     let y=112;
     // KPIs
-    const kp=[['SEM DOCA',fN(T.n),'#D0021B','#FDECEE'],['PALLETS',(T.est?'~':'')+fN(T.pal),'#0E1B3D','#fff'],['PESO',fmtPeso(T.kg),'#0E1B3D','#fff'],['DATAS',String(dados.length),'#0E1B3D','#fff']];
-    const kw=(W-2*P-3*12)/4;
+    const kp=[['SEM DOCA',fN(T.n),'#D0021B','#FDECEE'],['PESO',fmtPeso(T.kg),'#0E1B3D','#fff'],['DATAS',String(dados.length),'#0E1B3D','#fff']];
+    const kw=(W-2*P-2*12)/3;
     kp.forEach(([l,v,c,bg],i)=>{ const x=P+i*(kw+12); rr(x,y,kw,76,10,i?'#C9CFDD':'#D0021B'); rr(x+1.5,y+1.5,kw-3,73,9,bg);
       txt(l,x+16,y+22,font('bold',11),i?'#5A6072':'#D0021B'); txt(v,x+16,y+52,font('bold',26),c); });
     y+=96;
     if(!dados.length){ txt('✓ Nenhuma carga pendente de listagem',W/2,y+24,font('bold',18),'#217346','center'); y+=60; }
     // colunas da tabela
-    const cols=[['CD',P+14,'left'],['CARGAS',P+300,'right'],['PALLETS',P+390,'right'],['PESO',P+510,'right'],['COMPOSIÇÃO',P+540,'left']];
+    const cols=[['CD',P+14,'left'],['CARGAS',P+330,'right'],['PESO',P+480,'right'],['COMPOSIÇÃO',P+540,'left']];
     dados.forEach(d=>{
       rr(P,y,W-2*P,DH+HH+d.cds.length*RH,10,'#fff');
       g.save(); g.beginPath(); g.rect(P,y,W-2*P,DH); g.clip(); rr(P,y,W-2*P,DH+12,10,'#16265A'); g.restore();
@@ -2126,9 +2125,8 @@ book=load(); useTab(book.active); render();
         if(i){ g.fillStyle='#E6E9F0'; g.fillRect(P+10,y,W-2*P-20,1); }
         g.fillStyle='#E48B00'; g.fillRect(P,y+10,4,RH-20);
         txt(fit(c.cd,font('bold',15),260),P+14,y+RH/2,font('bold',15),'#0E1B3D');
-        txt(fN(c.t.n),P+300,y+RH/2,font('bold',20),'#D0021B','right');
-        txt((c.t.est?'~':'')+fN(c.t.pal),P+390,y+RH/2,font(c.t.est?'italic bold':'bold',15),'#16265A','right');
-        txt(fmtPeso(c.t.kg),P+510,y+RH/2,font('bold',14),'#16265A','right');
+        txt(fN(c.t.n),P+330,y+RH/2,font('bold',20),'#D0021B','right');
+        txt(fmtPeso(c.t.kg),P+480,y+RH/2,font('bold',14),'#16265A','right');
         const comp=conta(c.rows,r=>r[C.OBS2]), sep=conta(c.rows,r=>r[C.OBS]);
         const l1=(comp.length?comp:sep).map(([k,v])=>`${k} ${v}`).join(' · '), l2=comp.length&&sep.length?sep.map(([k,v])=>`${k} ${v}`).join(' · '):'';
         txt(fit(l1,font('bold',12.5),W-P-14-(P+540)),P+540,y+(l2?RH/2-8:RH/2),font('bold',12.5),'#2A2F3D');
