@@ -405,7 +405,7 @@ tr.over .ocBar i{background:#D0021B}
 <dialog class="dd" id="dCal" aria-labelledby="dCalT" style="width:min(680px,calc(100% - 24px))">
   <div class="dd-h"><div><h2 id="dCalT">Calendário de lojas 2026</h2><p>Visualize ou baixe a imagem do calendário</p></div><button type="button" class="xc" id="calClose" aria-label="Fechar">×</button></div>
   <div class="dd-b"><div class="calBox"><img id="calImg" alt="Calendário de lojas 2026"></div></div>
-  <div class="dd-f"><button type="button" id="calOk">Fechar</button><a class="go" id="calDown" download="Calendario-lojas-2026.png" style="font:700 13px Arial,sans-serif;border-radius:6px;padding:10px 16px;background:#217346;color:#fff;text-decoration:none;display:inline-flex;align-items:center;min-height:40px;box-sizing:border-box">Baixar imagem</a></div>
+  <div class="dd-f"><button type="button" id="calOk">Fechar</button><button type="button" id="calPrint">Imprimir</button><a class="go" id="calDown" download="Calendario-lojas-2026.png" style="font:700 13px Arial,sans-serif;border-radius:6px;padding:10px 16px;background:#217346;color:#fff;text-decoration:none;display:inline-flex;align-items:center;min-height:40px;box-sizing:border-box">Baixar imagem</a></div>
 </dialog>
 <div id="printArea"></div>
 
@@ -1140,6 +1140,7 @@ function desenharLojasDocas(esc_){
 }
 
 /* janela de imagem (calendário e lojas × docas) */
+const IMGS_ORI={cal:'portrait', ld:'landscape'};
 const IMGS={
   cal:{t:'Calendário de lojas 2026', p:'Visualize ou baixe a imagem do calendário', arq:'Calendario-lojas-2026.png', fn:desenharCalendario, w:620},
   ld:{t:'Lojas × Docas', p:'Visualize ou baixe a tabela de docas por loja', arq:'Lojas-x-Docas-CD107.png', fn:desenharLojasDocas, w:900}
@@ -1157,6 +1158,17 @@ function abrirImg(k){
 $('#bCal').addEventListener('click',()=>abrirImg('cal'));
 $('#bLD').addEventListener('click',()=>abrirImg('ld'));
 $('#calDown').addEventListener('click',e=>{ e.currentTarget.href=IMGS[imgAtual].fn(4).toDataURL('image/png'); });
+/* imprime só a imagem, ocupando a folha (calendário em pé, lojas × docas deitado) */
+$('#calPrint').addEventListener('click',()=>{
+  const o=IMGS[imgAtual], ori=IMGS_ORI[imgAtual]||'portrait';
+  const alt = ori==='portrait' ? '277mm' : '190mm';
+  let st=document.getElementById('pgImg'); if(!st){ st=document.createElement('style'); st.id='pgImg'; document.head.appendChild(st); }
+  st.textContent=`@page{size:A4 ${ori};margin:8mm}`;
+  $('#printArea').innerHTML=`<div style="display:flex;justify-content:center;align-items:flex-start"><img src="${o.fn(3).toDataURL('image/png')}" alt="${esc(o.t)}" style="max-width:100%;max-height:${alt};width:auto;height:auto;display:block"></div>`;
+  $('#dCal').close(); document.body.classList.add('printing');
+  setTimeout(()=>window.print(),80);
+});
+window.addEventListener('afterprint',()=>{ const st=document.getElementById('pgImg'); if(st) st.remove(); });
 $('#calClose').onclick=$('#calOk').onclick=()=>$('#dCal').close();
 
 /* ============ OCUPAÇÃO POR DOCA (aba atual) ============ */
