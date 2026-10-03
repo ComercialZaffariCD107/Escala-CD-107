@@ -601,8 +601,8 @@ function statusNormas(){
     st.innerHTML=`<b>${BASE_NR.n.toLocaleString('pt-BR')}</b> produtos com norma · ${esc(BASE_NR.arquivo)} · salvo em ${d.toLocaleDateString('pt-BR')} ${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`;
     z.classList.add('ok'); $('#bNrDel').hidden=false;
   } else { st.textContent='Clique ou arraste o arquivo aqui (.txt)'; z.classList.remove('ok'); $('#bNrDel').hidden=true; }
-  $('#bNrRegras').innerHTML = `<span><b>Palete Box · Palete Inteiro Sorter · Palete Inteiro Não Sorter</b> → por produto: pedido total em <b>caixas</b> (todas as lojas da carga) ÷ caixas da norma (lastro × camadas), só os paletes <b>fechados</b> (1,8 palete → 1). Soma dos produtos = QTD PALLET da carga.</span>`
-    + `<span>Produto que não fecha palete não conta; se nenhum fecha, a carga fica com 1. Produto sem norma na base não conta (não usa m³). Para conferir uma carga: Carregar dados → Conferir cálculo.</span>`
+  $('#bNrRegras').innerHTML = `<span><b>Palete Box · Palete Inteiro Sorter · Palete Inteiro Não Sorter</b> → por produto: pedido total em <b>caixas</b> (todas as lojas da carga) ÷ caixas da norma (lastro × camadas), arredondado <b>para cima</b> (147 cx ÷ 49 = 3 · 150 cx ÷ 49 = 4). Soma dos produtos = QTD PALLET da carga.</span>`
+    + `<span>Produto sem norma na base conta 1 palete (não usa m³). Para conferir uma carga: Carregar dados → Conferir cálculo.</span>`
     + `<span><b>Separação</b> (Picking Sorter, Picking Não Sorter, Sorter) → continua pela cubagem da carga.</span>`;
   const inf=$('#pNrInfo'); if(inf) inf.innerHTML = BASE_NR ? `<span style="color:#1E7B4F">Base 04 carregada (${BASE_NR.n.toLocaleString('pt-BR')} produtos).</span>` : `<span class="w" style="color:#B5480B">Base 04 não carregada: Box/Inteiro ficam pela cubagem até enviar em "Bases de dados".</span>`;
   $('#bBase').classList.toggle('tem',!!(BASE_LS||BASE_NR));
@@ -1345,7 +1345,24 @@ book=load(); useTab(book.active); render();
         diaInc: o.diaInc || '', inc: o.inc || {}
       };
     });
-    return $('#oUnir').checked ? unirMistas(lista) : lista;
+    if($('#oUnir').checked) return unirMistas(lista);
+    // sem unir: Box/Inteiro calculado pela CARGA (soma de cada produto de todas as lojas) e dividido pelo peso de cada loja
+    const por=new Map(); lista.forEach(x=>{ if(x.palModo!=='norma') return; if(!por.has(x.carga)) por.set(x.carga,[]); por.get(x.carga).push(x); });
+    por.forEach(g=>{
+      if(g.length<2) return;
+      const q={}; g.forEach(x=>{ for(const k in x.qtd) q[k]=(q[k]||0)+x.qtd[k]; });
+      const tot=palNorma(q).pal, parte=dividirPeso(tot,g.map(x=>x.peso));
+      g.forEach((x,i)=>{ x.pal=parte[i]; x.palCarga=tot; x.qtdCarga=q; });
+    });
+    return lista;
+  }
+  /* divide N paletes entre as lojas pelo peso (maiores restos), a soma fecha N */
+  function dividirPeso(n,pesos){
+    const t=pesos.reduce((a,p)=>a+(p>0?p:0),0)||pesos.length;
+    const raw=pesos.map(p=>n*((t===pesos.length&&!(p>0))?1:(p>0?p:0))/t), base=raw.map(Math.floor);
+    let r=n-base.reduce((a,b)=>a+b,0);
+    raw.map((v,i)=>[v-base[i],i]).sort((a,b)=>b[0]-a[0]).forEach(([,i])=>{ if(r>0){ base[i]++; r--; } });
+    return base;
   }
   /* uma linha por carga quando ela atende mais de uma loja */
   function unirMistas(lista){
@@ -1394,7 +1411,7 @@ book=load(); useTab(book.active); render();
   const cfg = () => ({ on:true, m3:parseFloat($('#pM3').value)||1.5, m3b:0.75, kg:parseFloat($('#pKg').value)||1000, un2:$('#pUn').value||'auto' });
   const ehBox = obs => /box|inteiro/i.test(obs||'');      // Palete Box, Palete Inteiro Sorter, Palete Inteiro Não Sorter
   /* QTD PALLET da carga × loja:
-     separação → cubagem/peso · Box/Inteiro → norma do produto (base 04): só paletes fechados por produto */
+     separação → cubagem/peso · Box/Inteiro → norma do produto (base 04): soma do produto na carga ÷ norma, para cima */
   function estPalCarga(o,obs){
     if(!ehBox(obs)) return {pal:estPal(o.cubEst||0,o.peso,obs), modo:'cub', info:null};
     if(!BASE_NR || !D.dem || !D.dem.temQtd || !Object.keys(o.qtd||{}).length) return {pal:0, modo:'semNorma', info:null};   // Box sem dados: não chuta pela cubagem
@@ -1404,7 +1421,7 @@ book=load(); useTab(book.active); render();
   /* por produto: quantidade ÷ unidades da norma → só paletes fechados; produto sem norma → cubagem ÷ m³ Box/Inteiro.
      Se nada fecha palete, a linha fica com 1 (a carga existe). det = conta de cada produto (para conferência) */
   /* Box / Palete Inteiro: pedido total do produto (em caixas) ÷ caixas da norma (lastro × camadas)
-     ex.: norma 5 x 10 = 50 cx · pedido 150 cx → 3 paletes. Só paletes fechados (1,8 → 1). */
+     ex.: norma 7 x 7 = 49 cx · pedido somado na carga 147 cx → 3 paletes; 150 cx → 4 (para cima). */
   function unidadeQtd(){
     const esco=cfg().un2; if(esco!=='auto') return esco;
     if(!D.dem || !BASE_NR) return 'un';
@@ -1421,13 +1438,13 @@ book=load(); useTab(book.active); render();
     Object.entries(qtd).forEach(([sq,q])=>{
       if(!(q>0)) return; info.sku++;
       const nr=BASE_NR.sku[sq];
-      if(!nr){ info.semNorma++; det.push({sq,q,cx:null}); return; }
+      if(!nr){ info.semNorma++; pal+=1; det.push({sq,q,cx:null,n:1}); return; }   // sem norma: conta 1 palete
       const emb=nr[0]/nr[1], cx = un==='un' ? q/emb : q;      // pedido em caixas
-      const n=Math.floor(cx/nr[1]+1e-9);
-      if(n<1) info.naoFecha++; pal+=n; det.push({sq,q,cx,porPal:nr[1],lc:nr[2]||'',n});
+      // soma do produto na carga ÷ caixas da norma, para cima (147 cx ÷ 49 = 3 · 150 ÷ 49 = 4)
+      const n=Math.max(1,Math.ceil(cx/nr[1]-1e-9));
+      if(cx/nr[1]%1>1e-9) info.naoFecha++; pal+=n; det.push({sq,q,cx,porPal:nr[1],lc:nr[2]||'',n});
     });
-    const min1 = !pal && info.sku>0; if(min1) pal=1;
-    return {pal, info, det, min1, un};
+    return {pal, info, det, min1:false, un};
   }
   function estPal(cub,peso,obs){
     const c=cfg(); if(!(cub>0)&&!(peso>0)) return 0;
@@ -1566,7 +1583,7 @@ book=load(); useTab(book.active); render();
     if(bx.length){
       const nr=bx.filter(x=>x.palModo==='norma'), i={sku:0,semNorma:0,naoFecha:0}; nr.forEach(x=>x.palInfo&&Object.keys(i).forEach(k=>i[k]+=x.palInfo[k]||0));
       t+=` · box/inteiro <b>~${f(sum(bx))}</b>`;
-      if(nr.length) t+=` (norma: ${f(i.sku)} produto(s)${i.naoFecha?`, ${f(i.naoFecha)} sem fechar palete`:''}${i.semNorma?`, <span class="w">${f(i.semNorma)} sem norma na base 04 (não contam)</span>`:''}; quantidade em ${unidadeQtd()==='un'?'unidades':'caixas'})`;
+      if(nr.length) t+=` (norma: ${f(i.sku)} produto(s)${i.naoFecha?`, ${f(i.naoFecha)} com palete incompleto (arredondado para cima)`:''}${i.semNorma?`, <span class="w">${f(i.semNorma)} sem norma na base 04 (1 palete cada)</span>`:''}; quantidade em ${unidadeQtd()==='un'?'unidades':'caixas'})`;
       if(nr.length<bx.length) t+=` <span class="w">${f(bx.length-nr.length)} carga(s) box/inteiro sem QTD PALLET${!BASE_NR?' (envie a base 04 Posição de endereços em "Bases de dados")':!D.dem.temQtd?' (Metabase sem coluna Quantidade)':!D.dem.temSeq?' (Metabase sem SEQPRODUTO)':''}</span>`;
     }
     if(real.length) t+=` · ${f(real.length)} com QTD real do Metabase`;
@@ -1587,12 +1604,13 @@ book=load(); useTab(book.active); render();
       out.innerHTML=h; return;
     }
     if(x.palModo!=='norma'){ h+=`<span class="z">Box/Inteiro sem cálculo: ${!BASE_NR?'base 04 (Posição de endereços) não carregada':!D.dem.temQtd?'Metabase sem coluna Quantidade':'Metabase sem SEQPRODUTO'}.</span>`; out.innerHTML=h; return; }
-    const r=palNorma(x.qtd);
+    const r=palNorma(x.qtdCarga||x.qtd);
+    if(x.qtdCarga) h+=`Carga com lojas em linhas separadas: total da carga <b>${f(x.palCarga)}</b>, dividido pelo peso de cada loja.<br>`;
     h+=`Pedido total do produto (todas as lojas) ÷ caixas da norma · Quantidade do Metabase lida em <b>${r.un==='un'?'unidades (÷ embalagem = caixas)':'caixas'}</b>`
-      + `<table><tr><th>Produto</th><th>Pedido (cx)</th><th>Norma</th><th>cx/palete</th><th>Paletes</th><th>Sobra (cx)</th></tr>`
+      + `<table><tr><th>Produto</th><th>Pedido (cx)</th><th>Norma</th><th>cx/palete</th><th>Paletes</th><th>Falta p/ completar (cx)</th></tr>`
       + r.det.sort((a,b)=>(b.n??-1)-(a.n??-1)||b.q-a.q).map(d=>d.porPal
-          ? `<tr${d.n<1?' class="z"':''}><td>${d.sq}</td><td>${f(d.cx,1)}</td><td>${esc((d.lc||'').replace('x',' x '))}</td><td>${f(d.porPal)}</td><td>${d.n}</td><td>${f(d.cx-d.n*d.porPal,1)}</td></tr>`
-          : `<tr class="z"><td>${d.sq}</td><td>${f(d.q)}</td><td colspan="4">sem norma na base 04 (não conta)</td></tr>`).join('')
+          ? `<tr><td>${d.sq}</td><td>${f(d.cx,1)}</td><td>${esc((d.lc||'').replace('x',' x '))}</td><td>${f(d.porPal)}</td><td>${d.n}</td><td>${f(Math.max(0,d.n*d.porPal-d.cx),1)}</td></tr>`
+          : `<tr class="z"><td>${d.sq}</td><td>${f(d.q)}</td><td colspan="3">sem norma na base 04</td><td>1</td></tr>`).join('')
       + `</table>`
       + (r.min1?'Nenhum produto fecha palete → 1 · ':'')
       + `<b>Total ${r.pal}</b>`;
