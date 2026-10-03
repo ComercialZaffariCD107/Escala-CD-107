@@ -265,7 +265,7 @@ dialog.dd::backdrop{background:rgba(14,27,61,.55)}
   <p class="hint">Navegue como no Excel: setas, Enter e Tab. Dá para colar um bloco copiado do Excel direto numa célula; linhas novas são criadas na seção.</p>
 </div>
 <dialog class="dd" id="dLoad" aria-labelledby="dLoadT">
-  <div class="dd-h"><div><h2 id="dLoadT">Carregar dados na escala</h2><p>Junte o Metabase (cargas) com a planilha de docas e preencha a escala automaticamente</p></div><button type="button" class="xc" id="dClose" aria-label="Fechar">×</button></div>
+  <div class="dd-h"><div><h2 id="dLoadT">Carregar dados na escala</h2><p>Junte o Metabase (cargas) com a Consulta 86 (doca e paletes) e preencha a escala automaticamente</p></div><button type="button" class="xc" id="dClose" aria-label="Fechar">×</button></div>
   <div class="dd-b">
     <div class="drops">
       <label class="drop" id="zDem" tabindex="0">
@@ -276,11 +276,11 @@ dialog.dd::backdrop{background:rgba(14,27,61,.55)}
         <input type="file" id="fDem" accept=".xlsx,.csv">
       </label>
       <label class="drop" id="zCar" tabindex="0">
-        <span class="n">2 · DOCAS</span>
-        <b>Cargas expedição</b>
-        <small>Número da carga e BOX (doca) (.xlsx ou .csv)</small>
+        <span class="n">2 · DOCAS E PALETES</span>
+        <b>86 · Status Carga de Expedição</b>
+        <small>Carga, BOX (doca) e paletes gerados (.txt, .csv ou .xlsx)</small>
         <span class="st" id="sCar">Clique ou arraste o arquivo aqui</span>
-        <input type="file" id="fCar" accept=".xlsx,.csv">
+        <input type="file" id="fCar" accept=".txt,.csv,.xlsx">
       </label>
     </div>
     <div class="opts">
@@ -299,7 +299,7 @@ dialog.dd::backdrop{background:rgba(14,27,61,.55)}
       </fieldset>
       <fieldset style="grid-column:1/-1">
         <legend>Estimativa de QTD PALLET</legend>
-        <div class="calib" style="margin-bottom:4px"><b>Separação</b> (Picking Sorter, Picking Não Sorter, Sorter): cubagem da carga ÷ m³ por palete (e o limite de kg).<br><b>Palete Box / Palete Inteiro</b>: pedido total do produto em caixas ÷ caixas da norma (base 04). Ex.: norma 5 x 10 = 50 cx, pedido 150 cx → 3 paletes. Não usa m³. <span id="pNrInfo"></span></div>
+        <div class="calib" style="margin-bottom:4px"><b>Consulta 86 carregada</b>: QTD PALLET = paletes gerados da carga (NROPALETE distintos), vale sobre qualquer estimativa.<br><b>Sem a carga na Consulta 86</b> · <b>Separação</b> (Picking Sorter, Picking Não Sorter, Sorter): cubagem da carga ÷ m³ por palete (e o limite de kg).<br><b>Palete Box / Palete Inteiro</b>: pedido total do produto em caixas ÷ caixas da norma (base 04). Ex.: norma 5 x 10 = 50 cx, pedido 150 cx → 3 paletes. Não usa m³. <span id="pNrInfo"></span></div>
         <div style="color:#444;font-size:12.5px">QTD PALLET é preenchida em todas as abas onde estiver vazia ou estimada (aparece como <i style="color:#6A7085">~N</i>; ao digitar o número real, vira valor definitivo e nunca é sobrescrito)</div>
         <label>m³ por palete · picking <input type="number" id="pM3" min="0.1" step="0.05" value="1.5"> &nbsp; kg máx. por palete <input type="number" id="pKg" min="50" step="50" value="1000"></label>
         <label>Coluna Quantidade do Metabase está em <select id="pUn"><option value="auto">automático</option><option value="un">unidades</option><option value="cx">caixas</option></select> <span id="pUnDet" style="color:#666;font-size:12px"></span></label>
@@ -310,7 +310,7 @@ dialog.dd::backdrop{background:rgba(14,27,61,.55)}
       <label>Nº da carga <input type="text" id="cfCarga" inputmode="numeric" placeholder="ex.: 1634969" style="width:130px"></label>
       <div id="cfOut" class="cfOut"></div>
     </fieldset>
-    <div class="prev" id="prev" aria-live="polite">Carregue pelo menos um dos arquivos. Só com a planilha de docas, a escala atual tem as docas atualizadas pelo número da carga.</div>
+    <div class="prev" id="prev" aria-live="polite">Carregue pelo menos um dos arquivos. Só com a Consulta 86, as abas têm DOCA e QTD PALLET atualizadas pelo número da carga.</div>
   </div>
   <div class="dd-f"><button type="button" id="dCancel">Cancelar</button><button type="button" class="go" id="dGo" disabled>Preencher escala</button></div>
 </dialog>
@@ -1000,8 +1000,8 @@ book=load(); useTab(book.active); render();
   }
   async function readTable(file){
     let grid;
-    if(/\.csv$/i.test(file.name)){
-      grid=parseCSV(await file.text());
+    if(/\.(csv|txt)$/i.test(file.name)){
+      grid=parseCSV(await lerTexto(file));
     } else {
       const wb=new ExcelJS.Workbook(); await wb.xlsx.load(await file.arrayBuffer());
       const ws=wb.worksheets.find(w=>w.rowCount>1)||wb.worksheets[0];
@@ -1011,6 +1011,12 @@ book=load(); useTab(book.active); render();
     if(h<0) throw new Error('não encontrei o cabeçalho');
     const cols={}; grid[h].forEach((x,i)=>{ const k=norm(x); if(k && !(k in cols)) cols[k]=i; });
     return {cols, rows:grid.slice(h+1).filter(r=>r.some(x=>String(x??'').trim()))};
+  }
+  /* TXT/CSV do sistema vem em ISO-8859-1: tenta UTF-8 e, se falhar, lê como Windows-1252 */
+  async function lerTexto(file){
+    const buf=await file.arrayBuffer();
+    try{ return new TextDecoder('utf-8',{fatal:true}).decode(buf); }
+    catch(e){ return new TextDecoder('windows-1252').decode(buf); }
   }
   function pick(cols, ...keys){ for(const k of keys){ if(k in cols) return cols[k]; } return -1; }
 
@@ -1078,18 +1084,38 @@ book=load(); useTab(book.active); render();
     return {itens:[...g.values()], linhas:t.rows.length, semCarga, cargas:new Set([...g.values()].map(o=>o.carga)).size, temInc:I.inc>=0, mistas, temCub:I.cub>=0&&gCub>0, mPorKg, temSeq:I.seq>=0, temLin:I.lin>=0, temQtd:I.vol>=0};
   }
 
-  /* ---------- 2) Cargas expedição: docas ---------- */
+  /* ---------- 2) Consulta 86 · Status Carga de Expedição: doca e paletes ----------
+     DTAHORGERACAO;NROCARGA;DESTINO;NROBOX;NROPALETE;ATIVIDADE
+     Uma linha por palete × atividade (o mesmo palete aparece em "Separação" e em "Conferência de Separação"),
+     então QTD PALLET da carga = quantidade de NROPALETE distintos. DOCA = NROBOX. */
   function lerCargas(t){
-    const c=t.cols, I={ carga:pick(c,'carga','nrocarga'), desc:pick(c,'descricao','desccarga'), box:pick(c,'box','doca','nrobox'),
-      d1:pick(c,'deposito1'), d2:pick(c,'deposito2'), d3:pick(c,'deposito3'), ger:pick(c,'geracao') };
-    if(I.carga<0||I.box<0) throw new Error('colunas não encontradas: CARGA e BOX');
-    const m=new Map();
+    const c=t.cols, I={ carga:pick(c,'nrocarga','carga'), box:pick(c,'nrobox','box','doca'),
+      pal:pick(c,'nropalete','palete','nropalet'), desc:pick(c,'destino','descricao','desccarga'),
+      ger:pick(c,'dtahorgeracao','geracao'), d1:pick(c,'deposito1'), d2:pick(c,'deposito2'), d3:pick(c,'deposito3') };
+    if(I.carga<0||I.box<0) throw new Error('colunas não encontradas: NROCARGA e NROBOX (arquivo da consulta 86)');
+    const m=new Map(); let linhas=0;
     t.rows.forEach(r=>{
-      const carga=toInt(r[I.carga]); if(!carga) return;
-      const st=[I.d1,I.d2,I.d3].map(i=>i>=0?String(r[i]??'').trim():'').find(Boolean)||'';
-      m.set(carga,{ box:toInt(r[I.box]), desc:I.desc>=0?String(r[I.desc]??''):'', status:st, dia:I.ger>=0?toDay(r[I.ger]):'' });
+      const carga=toInt(r[I.carga]); if(!carga) return; linhas++;
+      let o=m.get(carga);
+      if(!o){ o={boxes:{}, pals:new Set(), desc:'', status:'', dia:''}; m.set(carga,o); }
+      const bx=toInt(r[I.box]); if(bx) o.boxes[bx]=(o.boxes[bx]||0)+1;
+      if(I.pal>=0){ const p=String(r[I.pal]??'').trim(); if(p) o.pals.add(p); }
+      if(!o.desc && I.desc>=0 && r[I.desc]) o.desc=String(r[I.desc]);
+      if(!o.dia && I.ger>=0) o.dia=toDay(r[I.ger]);
+      if(!o.status){ o.status=[I.d1,I.d2,I.d3].map(i=>i>=0?String(r[i]??'').trim():'').find(Boolean)||''; }
     });
-    return {map:m, linhas:t.rows.length, comDoca:[...m.values()].filter(x=>x.box).length};
+    m.forEach((o,k)=>m.set(k,{ box:top(o.boxes), pal:o.pals.size, desc:o.desc, status:o.status, dia:o.dia }));
+    const v=[...m.values()];
+    return {map:m, linhas, comDoca:v.filter(x=>x.box).length, comPal:v.filter(x=>x.pal).length,
+      paletes:v.reduce((a,x)=>a+x.pal,0), temPal:I.pal>=0};
+  }
+  /* divide um total inteiro entre linhas, proporcional ao peso (maiores restos) — soma sempre bate com o total */
+  function dividir(total, pesos){
+    const s=pesos.reduce((a,p)=>a+(p>0?p:0),0);
+    const base=pesos.map(p=>s?total*(p>0?p:0)/s:total/pesos.length);
+    const out=base.map(Math.floor); let falta=total-out.reduce((a,x)=>a+x,0);
+    base.map((v,i)=>[v-Math.floor(v),i]).sort((a,b)=>b[0]-a[0]).forEach(([,i])=>{ if(falta>0){ out[i]++; falta--; } });
+    return out;
   }
 
   /* ---------- junção ---------- */
@@ -1119,6 +1145,14 @@ book=load(); useTab(book.active); render();
         diaInc: o.diaInc || '', inc: o.inc || {}
       };
     });
+    // QTD PALLET real da Consulta 86 (é por CARGA): vale sobre o Metabase e a estimativa.
+    // Carga com várias lojas em linhas separadas → divide os paletes pelo peso de cada loja.
+    const porCarga=new Map(); lista.forEach(x=>{ if(!porCarga.has(x.carga)) porCarga.set(x.carga,[]); porCarga.get(x.carga).push(x); });
+    porCarga.forEach((g,carga)=>{
+      const p=car.get(carga)?.pal||0; if(!p) return;
+      const parte=g.length>1?dividir(p,g.map(x=>x.peso)):[p];
+      g.forEach((x,i)=>{ x.palReal=parte[i]; x.pal=parte[i]; x.pal86=true; x.palCarga86=p; x.palModo='real'; x.palInfo=null; });
+    });
     return $('#oUnir').checked ? unirMistas(lista) : lista;
   }
   /* uma linha por carga quando ela atende mais de uma loja */
@@ -1135,13 +1169,13 @@ book=load(); useTab(book.active); render();
       out.push({ carga:g[0].carga, loja:'M', nLojas:g.length, pav:porPeso('pav'),
         tipoCarga: tipos.size>1?'Mista':[...tipos][0]||'', obs:porPeso('obs')||g[0].obs,
         doca:g.find(x=>x.doca)?.doca||'', peso:soma('peso'), vol:soma('vol'), cub:soma('cub'),
-        palReal:soma('palReal'), pal:soma('pal'), palModo:g[0].palModo, palInfo:somaInfo(g),
+        palReal:soma('palReal'), pal:soma('pal'), palModo:g[0].palModo, palInfo:somaInfo(g), pal86:g.some(x=>x.pal86),
         seqs, lin, obs2: classificarCarga(obsM, seqs, lin),
         status:g.find(x=>x.status)?.status||'', dia:porPeso('dia'), diaInc:top(inc)||porPeso('diaInc'), inc });
       // Box/Inteiro: o palete fechado é do PRODUTO na carga (o sorter divide entre as lojas) → soma a quantidade
       // de cada produto de todas as lojas e só então divide pela norma
       const u=out[out.length-1];
-      if(!u.palReal && g.every(x=>x.palModo==='norma')){
+      if(!u.palReal && !u.pal86 && g.every(x=>x.palModo==='norma')){
         const q={}, cb={}, ps={}; g.forEach(x=>{ for(const k in x.qtd){ q[k]=(q[k]||0)+x.qtd[k]; cb[k]=(cb[k]||0)+(x.cubSq[k]||0); ps[k]=(ps[k]||0)+(x.pesoSq[k]||0); } });
         const r=palNorma(q); u.pal=r.pal; u.palInfo=r.info; u.qtd=q; u.cubSq=cb; u.pesoSq=ps;
       }
@@ -1232,7 +1266,7 @@ book=load(); useTab(book.active); render();
     if(x.loja==='M'){ r[C.LOJA]='MISTA'; r[C.LOJAS]=`Lojas mistas (${x.nLojas})`; }
     else { r[C.LOJA]=x.loja; r[C.LOJAS]=x.loja?'Loja '+pad2(x.loja):''; }
     r[C.PAV]=x.pav; r[C.TIPO]=x.tipoCarga;
-    if(x.palReal) r[C.PAL]=String(Math.round(x.palReal));
+    if(x.palReal || x.pal86) r[C.PAL]=String(Math.round(x.palReal||0));
     else if(cfg().on && x.pal) r[C.PAL]='~'+x.pal;
     r[C.DOCA]=x.doca; r[C.PESO]=pesoTxt(x.peso);
     r[C.OBS]=x.obs; r[C.CARGA]=x.carga; r[C.OBS2]=x.obs2||'';
@@ -1265,7 +1299,8 @@ book=load(); useTab(book.active); render();
           montarTipos(); montarDias();
         } else {
           D.car=lerCargas(t);
-          st.textContent=`${file.name} · ${D.car.map.size.toLocaleString('pt-BR')} cargas · ${D.car.comDoca.toLocaleString('pt-BR')} com doca`;
+          st.textContent=`${file.name} · ${D.car.map.size.toLocaleString('pt-BR')} cargas · ${D.car.comDoca.toLocaleString('pt-BR')} com doca · ${D.car.paletes.toLocaleString('pt-BR')} paletes`;
+          if(!D.car.temPal) st.textContent+=' (sem coluna NROPALETE)';
         }
         z.classList.add('ok');
       }catch(err){ console.error(err); if(tipo==='dem') D.dem=null; else D.car=null; z.classList.add('err'); st.textContent='Erro: '+err.message; }
@@ -1301,12 +1336,12 @@ book=load(); useTab(book.active); render();
     $('#pUnDet').textContent = (cfg().un2==='auto' && D.dem && BASE_NR && D.dem.temQtd) ? `→ detectado: ${unidadeQtd()==='un'?'unidades':'caixas'}` : '';
     if($('#cfCarga').value) setTimeout(conferir);
     const go=$('#dGo'), pv=$('#prev');
-    if(!D.dem && !D.car){ go.disabled=true; pv.innerHTML='Carregue pelo menos um dos arquivos. Só com a planilha de docas, a escala atual tem as docas atualizadas pelo número da carga.'; return; }
+    if(!D.dem && !D.car){ go.disabled=true; pv.innerHTML='Carregue pelo menos um dos arquivos. Só com a Consulta 86, as abas têm DOCA e QTD PALLET atualizadas pelo número da carga.'; return; }
     if(!D.dem){
       let n=0; linhasTodas(r=>{ if(D.car.map.has(toInt(r[C.CARGA]))) n++; });
-      go.disabled=!n; go.textContent='Atualizar docas';
-      pv.innerHTML = n ? `Só a planilha de docas: <b>${n}</b> linha(s) das abas têm a carga nela e vão receber a <b>DOCA</b>.<br><span class="w">QTD PALLET precisa do Metabase (cubagem, quantidade e produto): carregue o arquivo 1 também.</span>`
-                       : `<span class="w">Nenhuma carga das abas aparece na planilha de docas.</span> Carregue também o Metabase para montar a escala.`;
+      go.disabled=!n; go.textContent='Atualizar docas e paletes';
+      pv.innerHTML = n ? `Só a Consulta 86: <b>${n}</b> linha(s) das abas têm a carga nela e vão receber <b>DOCA</b> e <b>QTD PALLET</b> (paletes gerados no sistema; substitui o valor atual).`
+                       : `<span class="w">Nenhuma carga das abas aparece na Consulta 86.</span> Carregue também o Metabase para montar a escala.`;
       return;
     }
     go.textContent='Preencher escala'; calibrar();
@@ -1325,8 +1360,8 @@ book=load(); useTab(book.active); render();
             return '<br>Observação: '+Object.keys(o).sort().map(k=>`${esc(k)} <b>${o[k]}</b>`).join(' · ')
               + (!D.dem.temSeq&&!D.dem.temLin ? ' <span class="w">(Metabase sem coluna SEQPRODUTO: só dá para marcar PALETE BOX)</span>'
                  : !BASE_LS&&!D.dem.temLin ? ' <span class="w">(envie a base Linha de separação em "Bases de dados" para marcar MIX / CONFINADOS / EMBALAGEM / EXPEDIENTE)</span>' : ''); })()
-        + (D.car?'':' <span class="w">(carregue a planilha de docas para preencher a coluna DOCA)</span>')
-        + (cfg().on ? `<br>Paletes estimados: <b>~${lista.reduce((a,x)=>a+x.pal,0).toLocaleString('pt-BR')}</b>` + resumoPal(lista)
+        + (D.car?'':' <span class="w">(carregue a Consulta 86 para preencher DOCA e QTD PALLET real)</span>')
+        + (cfg().on ? `<br>Paletes: <b>${lista.some(x=>!x.palReal&&!x.pal86)?'~':''}${lista.reduce((a,x)=>a+x.pal,0).toLocaleString('pt-BR')}</b>` + resumoPal(lista)
             + (D.dem.temCub?'':' <span class="w">sem cubagem no arquivo: separação estimada só pelo peso</span>') : '')
         + (D.dem.temInc ? '<br>Abas: ' + abasDe(lista).map(([k,n])=>`${k?fmtD(k):fmtD(book.active)+' (sem data)'} <b>${n}</b>${k&&!book.escalas[k]?' <span class="w">nova</span>':''}`).join(' · ')
             + (D.dem.mistas?`<br><span class="w">${D.dem.mistas} carga(s) × loja têm pedidos de mais de um dia: ficam na aba da data com maior peso.</span>`:'') : '')
@@ -1334,7 +1369,7 @@ book=load(); useTab(book.active); render();
       : '<span class="w">Nenhuma carga com esses filtros.</span> Ajuste o período ou os tipos.';
   }
   function resumoPal(lista){
-    const f=v=>v.toLocaleString('pt-BR'), sep=lista.filter(x=>!ehBox(x.obs)&&!x.palReal), bx=lista.filter(x=>ehBox(x.obs)&&!x.palReal), real=lista.filter(x=>x.palReal);
+    const f=v=>v.toLocaleString('pt-BR'), est=x=>!x.palReal&&!x.pal86, sep=lista.filter(x=>!ehBox(x.obs)&&est(x)), bx=lista.filter(x=>ehBox(x.obs)&&est(x)), real=lista.filter(x=>!est(x));
     const sum=a=>a.reduce((s,x)=>s+x.pal,0);
     let t=` · separação <b>~${f(sum(sep))}</b> (${sep.reduce((a,x)=>a+x.cub,0).toLocaleString('pt-BR',{maximumFractionDigits:1})} m³)`;
     if(bx.length){
@@ -1343,7 +1378,9 @@ book=load(); useTab(book.active); render();
       if(nr.length) t+=` (norma: ${f(i.sku)} produto(s)${i.naoFecha?`, ${f(i.naoFecha)} sem fechar palete`:''}${i.semNorma?`, <span class="w">${f(i.semNorma)} sem norma na base 04 (não contam)</span>`:''}; quantidade em ${unidadeQtd()==='un'?'unidades':'caixas'})`;
       if(nr.length<bx.length) t+=` <span class="w">${f(bx.length-nr.length)} carga(s) box/inteiro sem QTD PALLET${!BASE_NR?' (envie a base 04 Posição de endereços em "Bases de dados")':!D.dem.temQtd?' (Metabase sem coluna Quantidade)':!D.dem.temSeq?' (Metabase sem SEQPRODUTO)':''}</span>`;
     }
-    if(real.length) t+=` · ${f(real.length)} com QTD real do Metabase`;
+    const r86=real.filter(x=>x.pal86), rMb=real.filter(x=>!x.pal86);
+    if(r86.length) t+=` · <b>${f(r86.length)}</b> com QTD real da Consulta 86 (<b>${f(sum(r86))}</b> paletes)`;
+    if(rMb.length) t+=` · ${f(rMb.length)} com QTD real do Metabase`;
     return t;
   }
   document.addEventListener('bases',()=>{ if($('#dLoad').open) atualizarPrev(); });
@@ -1354,7 +1391,10 @@ book=load(); useTab(book.active); render();
     const x=montar().find(v=>v.carga===n);
     if(!x){ out.innerHTML=`<span class="z">Carga ${n} não está no Metabase carregado.</span>`; return; }
     const f=(v,d=0)=>(+v||0).toLocaleString('pt-BR',{maximumFractionDigits:d}), c=cfg();
-    let h=`<b>${esc(x.obs||'(sem tipo)')}</b> · ${x.loja==='M'?`${x.nLojas} lojas`:'Loja '+x.loja} · ${fmtPeso(x.peso)} · <b>QTD PALLET ${x.palReal?f(x.palReal)+' (real do Metabase)':'~'+x.pal}</b><br>`;
+    const c86=D.car&&D.car.map.get(n);
+    let h=`<b>${esc(x.obs||'(sem tipo)')}</b> · ${x.loja==='M'?`${x.nLojas} lojas`:'Loja '+x.loja} · ${fmtPeso(x.peso)} · <b>QTD PALLET ${x.pal86?f(x.palReal)+' (Consulta 86)':x.palReal?f(x.palReal)+' (real do Metabase)':'~'+x.pal}</b><br>`;
+    if(x.pal86){ out.innerHTML=h+`Consulta 86: <b>${f(c86.pal)}</b> palete(s) distintos gerados para a carga · doca ${esc(c86.box||'—')}`
+      + (x.loja!=='M' && x.palReal!==c86.pal ? ` · dividido entre as lojas pelo peso (esta loja: ${f(x.palReal)})` : ''); return; }
     if(x.palReal){ out.innerHTML=h; return; }
     if(x.palModo==='cub'){
       h+=`Separação, pela cubagem: ${f(x.cub,2)} m³ ÷ ${c.m3} m³ = ${f(Math.ceil(x.cub/c.m3-1e-9))} · peso ${f(x.peso)} kg ÷ ${c.kg} kg = ${f(Math.ceil(x.peso/c.kg-1e-9))} → vale o maior.`;
@@ -1447,17 +1487,36 @@ book=load(); useTab(book.active); render();
     });
     return n;
   }
+  /* Consulta 86 → DOCA e QTD PALLET em TODAS as abas, pelo número da carga.
+     A contagem do sistema substitui o que estiver na célula (estimado ou digitado), porque cresce conforme a separação avança.
+     Carga em várias linhas (lojas separadas) → paletes divididos pelo peso de cada linha. */
+  function aplicar86(){
+    if(!D.car) return {doca:0,pal:0};
+    const porCarga=new Map();
+    linhasTodas(r=>{ const c=toInt(r[C.CARGA]); if(!c || !D.car.map.has(c)) return; if(!porCarga.has(c)) porCarga.set(c,[]); porCarga.get(c).push(r); });
+    let nd=0, np=0;
+    porCarga.forEach((rows,c)=>{
+      const x=D.car.map.get(c);
+      if(x.box) rows.forEach(r=>{ r[C.DOCA]=x.box; nd++; });
+      if(x.pal){
+        // a mesma carga × loja repetida em outra aba recebe o mesmo valor (não divide de novo)
+        const lojas=new Map(); rows.forEach(r=>{ const k=lojaKey(r[C.LOJA]); if(!lojas.has(k)) lojas.set(k,{peso:parsePeso(r[C.PESO]),rows:[]}); lojas.get(k).rows.push(r); });
+        const g=[...lojas.values()], parte=g.length>1?dividir(x.pal,g.map(l=>l.peso)):[x.pal];
+        g.forEach((l,i)=>l.rows.forEach(r=>{ r[C.PAL]=String(parte[i]); np++; }));
+      }
+    });
+    return {doca:nd,pal:np};
+  }
   $('#dGo').addEventListener('click',()=>{
     snapshot();
     if(!D.dem){                                     // só docas: atualiza todas as abas
-      let n=0;
-      linhasTodas(r=>{ const c=D.car.map.get(toInt(r[C.CARGA])); if(!c) return; if(c.box) r[C.DOCA]=c.box; n++; });
-      save(); render(); dlg.close(); toast(`Docas atualizadas em ${n} linha(s).`,true); return;
+      const a=aplicar86();
+      save(); render(); dlg.close(); toast(`Consulta 86: DOCA em ${a.doca} linha(s) · QTD PALLET em ${a.pal} linha(s).`,true); return;
     }
     const lista=filtrar(montar()).sort(ordenar);
     const modo='new'; // sempre substitui o conteúdo das abas das datas carregadas
     if(!D.dem.temInc){                              // arquivo sem Dtainclusaopedido: vai tudo para a aba aberta
-      const r=aplicar(lista,modo); const np=preencherPal(); save(); render(); dlg.close();
+      const r=aplicar(lista,modo); const np=preencherPal(); aplicar86(); save(); render(); dlg.close();
       toast(modo==='new'?`Aba ${fmtD(book.active)} montada: ${lista.length} linhas.`:`${r.upd} linha(s) atualizada(s) e ${r.add} carga(s) nova(s) adicionada(s).`,true); return;
     }
     // uma aba por data de inclusão do pedido
@@ -1469,9 +1528,9 @@ book=load(); useTab(book.active); render();
       useTab(k); const r=aplicar(grupos.get(k),modo); upd+=r.upd; add+=r.add;
     });
     useTab(grupos.has(aberta)?aberta:ks[ks.length-1]);
-    const np=preencherPal();
+    const np=preencherPal(); const a86=aplicar86();
     save(); render(); dlg.close();
-    toast(`${ks.length} aba(s) preenchida(s)${criadas?` (${criadas} nova(s))`:''}: ${add} carga(s) adicionada(s)${upd?`, ${upd} atualizada(s)`:''} · QTD PALLET em ${np} linha(s).`,true);
+    toast(`${ks.length} aba(s) preenchida(s)${criadas?` (${criadas} nova(s))`:''}: ${add} carga(s) adicionada(s)${upd?`, ${upd} atualizada(s)`:''} · QTD PALLET em ${np} linha(s)${D.car?` · ${a86.pal} pela Consulta 86`:''}.`,true);
   });
 })();
 </script>
